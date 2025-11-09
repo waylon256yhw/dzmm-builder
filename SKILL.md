@@ -414,7 +414,7 @@ Organized library of reusable code patterns:
 Load this reference when implementing specific features or need quick access to proven code patterns.
 
 ### assets/examples/
-Six complete, working DZMM applications:
+Seven complete, working DZMM applications:
 
 1. **小红书文案.html** (~15KB) - Stateless Generator
    - Minimal architecture for quick prototyping
@@ -461,6 +461,20 @@ Six complete, working DZMM applications:
    - Concurrent request locking
    - XML parsing for content structure
    - Best for: Forums, content communities, social platforms
+
+7. **yoshiwara-chronicles-dzmm.html** (84KB) - Complete Visual Novel System ⭐
+   - **Multi-opening system** with dynamic scene switching (Night Chapter, Day Chapter)
+   - **Rich text rendering** with placeholder technique (handles nested options, dialogue quotes, italics)
+   - **Message management** (reroll/regenerate, edit, delete with context preservation)
+   - **Multi-slot save system** (3 slots with preview extraction)
+   - **Modular prompt engineering** (XML-structured with main + character + guidance + emphasis sections)
+   - **Advanced prompt techniques** (`<last_input>` emphasis, token optimization, format rules at bottom)
+   - **Streaming AI responses** with real-time display and auto-scroll
+   - **Responsive mobile design** (compressed navigation, flex-wrap buttons, adaptive spacing)
+   - **Resource reuse pattern** (GitHub Raw URLs for background images)
+   - Complete implementation of all visual novel patterns documented in this skill
+   - Best for: Visual novels, interactive fiction, narrative-driven games, Galgames
+   - **Reference project**: Based on 54-commit development of yoshiwara-chronicles
 
 Use these as starting templates or reference implementations for specific features.
 

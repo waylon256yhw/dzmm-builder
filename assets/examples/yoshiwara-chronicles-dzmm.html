@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>花宵道中 - 吉原花街物語</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'crimson': {
+              DEFAULT: 'hsl(355, 75%, 48%)',
+              light: 'hsl(355, 65%, 65%)'
+            },
+            'night': {
+              DEFAULT: 'hsl(220, 45%, 18%)',
+              dark: 'hsl(220, 50%, 12%)'
+            },
+            'gold': {
+              DEFAULT: 'hsl(45, 85%, 58%)',
+              light: 'hsl(45, 75%, 75%)'
+            },
+            'paper': {
+              DEFAULT: 'hsl(40, 25%, 95%)',
+              dark: 'hsl(40, 20%, 88%)'
+            }
+          },
+          boxShadow: {
+            'crimson': '0 8px 24px hsla(355, 75%, 48%, 0.2)',
+            'medium': '0 8px 24px hsla(220, 30%, 12%, 0.12)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Alpine.js CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Noto Serif SC', 'Georgia', serif;
+    }
+
+    /* Alpine.js 初始化前隐藏 */
+    [x-cloak] {
+      display: none !important;
+    }
+
+    /* 雪花动画 */
+    @keyframes snowfall {
+      0% {
+        transform: translateY(-10px) translateX(0);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) translateX(50px);
+        opacity: 0;
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-snowfall {
+      animation: snowfall linear infinite;
+    }
+
+    .animate-fadeIn {
+      animation: fadeIn 0.6s ease-out forwards;
+    }
+
+    /* 纸质纹理背景（CSS生成） */
+    .paper-texture {
+      background-color: hsl(40, 25%, 95%);
+      background-image: url('https://piepia.me/hana.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+    }
+
+    /* 夜晚背景（使用吉原夜景图片） */
+    .night-background {
+      background: hsl(220, 50%, 12%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 背景图片层（40%透明度） */
+    .night-background::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url('https://piepia.me/%E5%90%89%E5%8E%9F%E5%A4%9C.jpg');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.4;
+      z-index: 0;
+    }
+
+    /* 装饰边框 */
+    .decorative-border {
+      position: absolute;
+      width: 6rem;
+      height: 6rem;
+      opacity: 0.4;
+    }
+
+    .decorative-border-tl {
+      top: 0;
+      left: 0;
+      border-top: 4px solid hsl(355, 75%, 48%);
+      border-left: 4px solid hsl(355, 75%, 48%);
+    }
+
+    .decorative-border-tr {
+      top: 0;
+      right: 0;
+      border-top: 4px solid hsl(355, 75%, 48%);
+      border-right: 4px solid hsl(355, 75%, 48%);
+    }
+
+    .decorative-border-bl {
+      bottom: 0;
+      left: 0;
+      border-bottom: 4px solid hsl(355, 75%, 48%);
+      border-left: 4px solid hsl(355, 75%, 48%);
+    }
+
+    .decorative-border-br {
+      bottom: 0;
+      right: 0;
+      border-bottom: 4px solid hsl(355, 75%, 48%);
+      border-right: 4px solid hsl(355, 75%, 48%);
+    }
+  </style>
+</head>
+<body x-data="app" x-init="init()">
+
+  <!-- 欢迎页 -->
+  <div x-show="currentPage === 'welcome'"
+       x-transition.duration.300ms
+       x-cloak
+       class="min-h-screen relative overflow-hidden night-background">
+
+    <!-- 雪花效果 -->
+    <template x-for="i in 50" :key="i">
+      <div class="fixed text-white text-opacity-70 pointer-events-none animate-snowfall"
+           :style="`left: ${Math.random() * 100}%; animation-duration: ${5 + Math.random() * 10}s; animation-delay: ${Math.random() * 5}s; font-size: ${0.5 + Math.random() * 1}rem; z-index: 4;`">
+        ❄
+      </div>
+    </template>
+
+    <!-- 内容 -->
+    <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-6" style="z-index: 10;">
+      <div class="text-center animate-fadeIn space-y-8 max-w-2xl">
+        <!-- 标题 -->
+        <div class="space-y-4">
+          <h1 class="text-6xl md:text-7xl font-bold text-paper tracking-wider">
+            花宵道中
+          </h1>
+          <div class="h-px bg-gradient-to-r from-transparent via-gold to-transparent w-full"></div>
+          <p class="text-xl md:text-2xl text-gold-light tracking-widest">
+            吉原花街物語
+          </p>
+        </div>
+
+        <!-- 描述 -->
+        <p class="text-paper-dark text-lg md:text-xl leading-relaxed px-4">
+          吉原花街，今夜小雪。<br />
+          游女如花，命运如梦。<br />
+          您是否愿意，踏入这场繁华与哀愁交织的夜宴？
+        </p>
+
+        <!-- 按钮 -->
+        <div class="flex flex-col items-center gap-4 mt-12">
+          <button
+            @click="navigate('character')"
+            class="bg-crimson hover:bg-crimson-light text-paper font-medium text-lg px-16 py-6 rounded-md shadow-crimson transition-all duration-300 hover:scale-105 w-64">
+            入场
+          </button>
+
+          <button
+            @click="loadGame()"
+            class="bg-transparent border-2 border-gold text-gold hover:bg-gold hover:text-night font-medium text-lg px-16 py-6 rounded-md transition-all duration-300 hover:scale-105 w-64">
+            梦回
+          </button>
+
+          <button
+            @click="navigate('music')"
+            class="bg-transparent border-2 border-gold text-gold hover:bg-gold hover:text-night font-medium text-lg px-16 py-6 rounded-md transition-all duration-300 hover:scale-105 w-64">
+            聆音
+          </button>
+        </div>
+
+        <!-- 装饰元素 -->
+        <div class="flex items-center justify-center gap-4 mt-8 text-gold opacity-60">
+          <span>❃</span>
+          <span>❃</span>
+          <span>❃</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 角色创建页 -->
+  <div x-show="currentPage === 'character'"
+       x-transition.duration.300ms
+       x-cloak
+       class="min-h-screen py-12 px-4 paper-texture"
+       style="display: none;">
+    <div class="max-w-2xl mx-auto">
+      <div class="p-8 md:p-12 bg-white/95 backdrop-blur-sm shadow-medium border-4 border-double border-gold relative overflow-hidden rounded-lg">
+
+        <!-- 装饰边框 -->
+        <div class="decorative-border decorative-border-tl"></div>
+        <div class="decorative-border decorative-border-tr"></div>
+        <div class="decorative-border decorative-border-bl"></div>
+        <div class="decorative-border decorative-border-br"></div>
+
+        <!-- 内层装饰 -->
+        <div class="absolute top-2 left-2 right-2 bottom-2 border border-gold/30 pointer-events-none rounded"></div>
+
+        <div class="relative z-10">
+          <!-- 标题 -->
+          <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">角色创建</h1>
+            <div class="h-px bg-gradient-to-r from-transparent via-gold to-transparent w-full mb-4"></div>
+            <p class="text-gray-600">请填写您的身份信息</p>
+          </div>
+
+          <!-- 表单 -->
+          <form @submit.prevent="startStory()" class="space-y-6">
+
+            <!-- 姓名 -->
+            <div class="space-y-2">
+              <label class="text-lg font-medium text-gray-900 block">尊姓大名</label>
+              <input
+                type="text"
+                x-model="character.name"
+                placeholder="请输入您的姓名"
+                required
+                class="w-full text-lg border-2 border-gray-300 focus:border-gold rounded-md px-4 py-3 transition-colors outline-none">
+            </div>
+
+            <!-- 性别 -->
+            <div class="space-y-3">
+              <label class="text-lg font-medium text-gray-900 block">性别</label>
+              <div class="flex gap-6">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.gender" value="male" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>男性</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.gender" value="female" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>女性</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 职业 -->
+            <div class="space-y-3">
+              <label class="text-lg font-medium text-gray-900 block">职业身份</label>
+              <div class="space-y-2">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.occupation" value="merchant" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>商人</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.occupation" value="samurai" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>武士</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.occupation" value="artist" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>文人</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.occupation" value="doctor" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>医师</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                  <input type="radio" x-model="character.occupation" value="other" class="w-4 h-4 text-crimson focus:ring-crimson">
+                  <span>其他（自定义）</span>
+                </label>
+              </div>
+
+              <template x-if="character.occupation === 'other'">
+                <input
+                  type="text"
+                  x-model="character.customOccupation"
+                  placeholder="请输入您的职业"
+                  class="w-full mt-2 border-2 border-gray-300 focus:border-gold rounded-md px-4 py-2 transition-colors outline-none">
+              </template>
+            </div>
+
+            <!-- 补充信息 -->
+            <div class="space-y-2">
+              <label class="text-lg font-medium text-gray-900 block">补充信息（可选）</label>
+              <textarea
+                x-model="character.additionalInfo"
+                placeholder="您可以在此补充任何背景信息，如性格特点、来历等..."
+                class="w-full min-h-[120px] border-2 border-gray-300 focus:border-gold rounded-md px-4 py-3 transition-colors resize-none outline-none"></textarea>
+            </div>
+
+            <!-- 提交按钮 -->
+            <div class="pt-4 space-y-3">
+              <button
+                type="submit"
+                class="w-full bg-crimson hover:bg-crimson-light text-paper font-medium text-lg py-6 rounded-md shadow-crimson transition-all duration-300 hover:scale-[1.02]">
+                开始游历
+              </button>
+              <button
+                type="button"
+                @click="navigate('welcome')"
+                class="w-full bg-gray-600/80 hover:bg-gray-600 text-white font-medium text-sm py-3 rounded-md shadow-md transition-all duration-300">
+                返回欢迎页
+              </button>
+            </div>
+          </form>
+
+          <!-- 装饰页脚 -->
+          <div class="flex items-center justify-center gap-3 mt-8 text-gold opacity-60 text-sm">
+            <span>❃</span>
+            <span>花街夜话</span>
+            <span>❃</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 故事对话页 -->
+  <div x-show="currentPage === 'story'"
+       x-transition.duration.300ms
+       x-cloak
+       class="h-screen flex flex-col paper-texture"
+       style="display: none;">
+
+    <!-- 顶部导航栏（固定） -->
+    <div class="bg-night-dark text-white px-4 py-2 shadow-lg flex-shrink-0 relative">
+      <!-- 装饰性花瓣 -->
+      <div class="absolute top-1 left-4 text-crimson text-xl opacity-60 pointer-events-none hidden md:block">❀</div>
+      <div class="absolute top-1 right-4 text-crimson text-xl opacity-60 pointer-events-none hidden md:block">❀</div>
+
+      <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+        <h2 class="text-lg md:text-xl font-bold text-gold">花宵道中</h2>
+        <div class="flex flex-wrap gap-1.5 items-center text-xs md:text-sm">
+          <select x-model="selectedOpening"
+                  @change="changeOpening()"
+                  class="px-2 py-1.5 bg-indigo-600/80 hover:bg-indigo-600 text-white rounded transition-colors shadow-md border-0 cursor-pointer">
+            <template x-for="opening in openings" :key="opening.id">
+              <option :value="opening.id" x-text="opening.label"></option>
+            </template>
+          </select>
+          <select x-model="selectedModel"
+                  class="px-2 py-1.5 bg-purple-600/80 hover:bg-purple-600 text-white rounded transition-colors shadow-md border-0 cursor-pointer">
+            <option value="nalang-max-0826">Max 0826</option>
+            <option value="nalang-max-0619">Max 0619</option>
+            <option value="nalang-xl-0826">XL 0826</option>
+            <option value="nalang-xl-0430">XL 0430</option>
+            <option value="nalang-turbo-0826">Turbo 0826</option>
+            <option value="nalang-medium-0826">Medium 0826</option>
+          </select>
+          <button @click="saveGame()" class="px-3 py-1.5 bg-crimson/80 hover:bg-crimson rounded transition-colors shadow-md whitespace-nowrap">
+            保存
+          </button>
+          <button @click="navigate('music')" class="px-3 py-1.5 bg-gold/80 hover:bg-gold text-night rounded transition-colors shadow-md whitespace-nowrap">
+            聆音
+          </button>
+          <button @click="navigate('welcome')" class="px-3 py-1.5 bg-gray-600/80 hover:bg-gray-600 rounded transition-colors shadow-md whitespace-nowrap">
+            离开
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 对话区域（可滚动，占据剩余空间） -->
+    <div class="flex-1 overflow-y-auto relative">
+      <!-- 装饰性花纹背景 -->
+      <div class="absolute top-8 left-8 text-4xl text-gold/20 pointer-events-none">❋</div>
+      <div class="absolute top-32 right-12 text-3xl text-crimson/20 pointer-events-none">✿</div>
+      <div class="absolute bottom-32 left-16 text-3xl text-gold/20 pointer-events-none">❀</div>
+
+      <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- 对话历史 -->
+        <div class="space-y-4" x-ref="messagesContainer" @click="handleQuickReply($event)">
+          <template x-for="(msg, index) in messages" :key="index">
+            <div :class="msg.role === 'user' ? 'flex justify-end flex-col items-end' : 'flex justify-start flex-col items-start'">
+              <!-- 消息气泡 -->
+              <div :class="msg.role === 'user'
+                ? 'bg-night/90 backdrop-blur-sm text-white px-6 py-4 rounded-2xl rounded-br-sm max-w-[80%] shadow-md border border-gold/30'
+                : 'bg-gradient-to-br from-white/95 to-paper/90 backdrop-blur-sm border-2 border-gold/40 px-6 py-4 rounded-2xl rounded-bl-sm max-w-[85%] shadow-lg relative'">
+                <!-- AI消息装饰性花瓣 -->
+                <template x-if="msg.role === 'assistant'">
+                  <div>
+                    <div class="absolute top-1 right-1 text-crimson/40 text-xs pointer-events-none">❀</div>
+                    <div class="absolute bottom-1 left-1 text-gold/40 text-xs pointer-events-none">✿</div>
+                  </div>
+                </template>
+
+                <!-- 正常显示消息内容 -->
+                <template x-if="editingIndex !== index">
+                  <div x-html="renderRichText(msg.content)"></div>
+                </template>
+
+                <!-- 编辑模式 -->
+                <template x-if="editingIndex === index && msg.role === 'user'">
+                  <div class="w-full">
+                    <textarea x-model="editingContent"
+                              class="w-full min-h-[100px] px-3 py-2 bg-white/20 text-white border border-gold/50 rounded-lg focus:outline-none focus:border-gold resize-none"
+                              placeholder="修改您的消息..."></textarea>
+                    <div class="flex gap-2 mt-2">
+                      <button @click="saveEdit(index)"
+                              class="px-3 py-1 text-xs bg-crimson hover:bg-crimson-light text-white rounded-full transition-colors">
+                        ✓ 保存并重发
+                      </button>
+                      <button @click="cancelEdit()"
+                              class="px-3 py-1 text-xs bg-gray-500 hover:bg-gray-600 text-white rounded-full transition-colors">
+                        ✕ 取消
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- 用户消息编辑和删除按钮 -->
+              <template x-if="msg.role === 'user' && editingIndex !== index">
+                <div class="flex gap-2 mt-2 mr-2">
+                  <button @click="startEdit(index, msg.content)"
+                          class="px-3 py-1 text-xs bg-gold/20 hover:bg-gold/40 text-night border border-gold/50 rounded-full transition-colors flex items-center gap-1">
+                    ✏️ 编辑
+                  </button>
+                  <button @click="deleteMessage(index)"
+                          class="px-3 py-1 text-xs bg-crimson/20 hover:bg-crimson/40 text-night border border-crimson/50 rounded-full transition-colors flex items-center gap-1">
+                    🗑️ 删除
+                  </button>
+                </div>
+              </template>
+
+              <!-- AI消息重新生成按钮 -->
+              <template x-if="msg.role === 'assistant'">
+                <button @click="rerollMessage(index)"
+                        :disabled="rerollingIndex === index"
+                        class="mt-2 ml-2 px-3 py-1 text-xs bg-gold/20 hover:bg-gold/40 text-night border border-gold/50 rounded-full transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span x-show="rerollingIndex !== index">🔄 重新生成</span>
+                  <span x-show="rerollingIndex === index" class="animate-pulse">⏳ 生成中...</span>
+                </button>
+              </template>
+            </div>
+          </template>
+
+          <!-- 加载中 -->
+          <template x-if="isLoading">
+            <div class="flex justify-start">
+              <div class="bg-gradient-to-br from-white/95 to-paper/90 backdrop-blur-sm border-2 border-gold/40 px-6 py-4 rounded-2xl max-w-[85%] shadow-lg relative">
+                <div class="absolute top-1 right-1 text-crimson/40 text-xs pointer-events-none">❀</div>
+                <span class="text-gray-500">朝雾正在思考<span class="animate-pulse">...</span></span>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- 空状态提示（没有对话时居中显示） -->
+        <template x-if="messages.length === 0 && !isLoading">
+          <div class="flex items-center justify-center min-h-[50vh]">
+            <div class="text-center text-gray-500">
+              <p class="text-lg mb-2">✨ 开始您的吉原之旅 ✨</p>
+              <p class="text-sm">在下方输入框与朝雾开始对话</p>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 输入区域（固定在底部） -->
+    <div class="flex-shrink-0 border-t-2 border-gold/20 bg-paper shadow-lg relative">
+      <!-- 装饰性花瓣 -->
+      <div class="absolute bottom-2 left-4 text-crimson text-xl opacity-60 pointer-events-none">✿</div>
+      <div class="absolute bottom-2 right-4 text-crimson text-xl opacity-60 pointer-events-none">✿</div>
+
+      <div class="max-w-4xl mx-auto px-4 py-1.5">
+        <div class="bg-white rounded-lg shadow-md p-2 border-2 border-gold/30">
+          <div class="flex gap-2">
+            <input
+              type="text"
+              x-model="userInput"
+              @keydown.enter="sendMessage()"
+              :disabled="isLoading"
+              placeholder="输入您的话语..."
+              class="flex-1 px-3 py-1.5 border-2 border-gray-300 focus:border-gold rounded-md outline-none transition-colors text-sm">
+            <button
+              @click="sendMessage()"
+              :disabled="isLoading || !userInput.trim()"
+              class="bg-crimson hover:bg-crimson-light disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-1.5 rounded-md font-medium transition-all text-sm">
+              发送
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 音乐页 -->
+  <div x-show="currentPage === 'music'"
+       x-transition.duration.300ms
+       x-cloak
+       class="min-h-screen paper-texture relative overflow-hidden"
+       style="display: none;">
+
+    <!-- 雪花效果 -->
+    <template x-for="i in 30" :key="i">
+      <div class="fixed text-gray-400 text-opacity-50 pointer-events-none animate-snowfall"
+           :style="`left: ${Math.random() * 100}%; animation-duration: ${5 + Math.random() * 10}s; animation-delay: ${Math.random() * 5}s; font-size: ${0.5 + Math.random() * 0.8}rem;`">
+        ❄
+      </div>
+    </template>
+
+    <div class="relative z-10 min-h-screen py-12 px-4">
+      <div class="max-w-4xl mx-auto">
+
+        <!-- 返回按钮 -->
+        <button
+          @click="navigate(storyStarted ? 'story' : 'welcome')"
+          class="mb-4 text-gray-700 hover:text-gold transition-colors flex items-center gap-2">
+          <span>←</span>
+          <span>返回</span>
+        </button>
+
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+          <h1 class="text-4xl font-bold text-gray-900 mb-2">聆音</h1>
+          <div class="h-px bg-gradient-to-r from-transparent via-gold to-transparent w-full mb-4"></div>
+          <p class="text-gray-600">江户雅乐，余音绕梁</p>
+        </div>
+
+        <!-- 当前播放卡片 -->
+        <div class="p-8 mb-6 bg-white/95 backdrop-blur-sm border-2 border-gold/30 rounded-lg relative overflow-hidden shadow-medium">
+          <div class="absolute top-2 right-2 text-crimson/30 text-2xl">♪</div>
+          <div class="absolute bottom-2 left-2 text-gold/30 text-2xl">♫</div>
+
+          <!-- 当前曲目 -->
+          <div class="text-center mb-6">
+            <h2 class="text-3xl font-bold text-gray-900 mb-2" x-text="musicCurrentTrack?.title || '未播放'"></h2>
+            <p class="text-gray-600" x-text="musicCurrentTrack?.artist || '请选择曲目'"></p>
+          </div>
+
+          <!-- 进度条 -->
+          <div class="mb-4">
+            <input
+              type="range"
+              :value="musicCurrentTime"
+              :max="musicDuration || 100"
+              @input="musicSeek($event.target.value)"
+              class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-crimson">
+            <div class="flex justify-between text-sm text-gray-500 mt-2">
+              <span x-text="formatTime(musicCurrentTime)"></span>
+              <span x-text="formatTime(musicDuration || 0)"></span>
+            </div>
+          </div>
+
+          <!-- 播放控制 -->
+          <div class="flex flex-col items-center gap-4">
+            <!-- 主控制按钮 -->
+            <div class="flex items-center justify-center gap-6">
+              <!-- 播放模式 -->
+              <button
+                @click="musicToggleMode()"
+                :title="musicGetModeText()"
+                class="w-10 h-10 flex items-center justify-center rounded-lg text-gray-600 hover:text-gold hover:bg-gold/10 transition-all">
+                <span class="text-xl" x-text="musicGetModeIcon()"></span>
+              </button>
+
+              <!-- 上一曲 -->
+              <button
+                @click="musicPrevious()"
+                class="w-12 h-12 flex items-center justify-center rounded-full text-gray-700 hover:text-gold hover:bg-gold/10 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                </svg>
+              </button>
+
+              <!-- 播放/暂停 -->
+              <button
+                @click="musicTogglePlay()"
+                class="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-crimson to-crimson-light text-white hover:shadow-lg hover:scale-105 transition-all duration-300 shadow-md">
+                <template x-if="musicIsPlaying">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                  </svg>
+                </template>
+                <template x-if="!musicIsPlaying">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                </template>
+              </button>
+
+              <!-- 下一曲 -->
+              <button
+                @click="musicNext()"
+                class="w-12 h-12 flex items-center justify-center rounded-full text-gray-700 hover:text-gold hover:bg-gold/10 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M16 18h2V6h-2zm-11-1l8.5-6L5 5z"/>
+                </svg>
+              </button>
+
+              <!-- 音量控制（单独一行） -->
+            </div>
+
+            <!-- 音量控制 -->
+            <div class="flex items-center gap-3 w-full max-w-xs">
+              <button @click="musicSetVolume(musicVolume > 0 ? 0 : 0.7)" class="text-gray-600 hover:text-gold transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path x-show="musicVolume > 0" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                  <path x-show="musicVolume === 0" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                </svg>
+              </button>
+              <div class="flex-1 relative h-2">
+                <div class="absolute inset-0 bg-gray-200 rounded-full"></div>
+                <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-gold to-gold/70 rounded-full transition-all duration-150" :style="'width: ' + (musicVolume * 100) + '%'"></div>
+                <input
+                  type="range"
+                  :value="musicVolume * 100"
+                  @input="musicSetVolume($event.target.value / 100)"
+                  min="0"
+                  max="100"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+              </div>
+              <span class="text-sm text-gray-600 w-10 text-right" x-text="Math.round(musicVolume * 100) + '%'"></span>
+            </div>
+
+            <!-- 播放模式文字 -->
+            <div class="text-sm text-gray-600" x-text="musicGetModeText()"></div>
+          </div>
+        </div>
+
+        <!-- 播放列表 -->
+        <div class="space-y-3">
+          <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <span class="text-gold">♪</span>
+            播放列表
+          </h3>
+
+          <template x-for="(track, index) in musicPlaylist" :key="track.id">
+            <div
+              @click="musicPlayTrack(index)"
+              :class="musicCurrentTrackIndex === index
+                ? 'bg-gradient-to-r from-gold/20 to-crimson/20 border-2 border-gold'
+                : 'bg-white/90 border border-gold/20 hover:bg-white'"
+              class="p-4 cursor-pointer transition-all duration-300 hover:border-gold/60 rounded-lg shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <h4 class="font-medium text-gray-900 mb-1 flex items-center gap-2">
+                    <template x-if="musicCurrentTrackIndex === index && musicIsPlaying">
+                      <span class="text-crimson animate-pulse">♪</span>
+                    </template>
+                    <span x-text="track.title"></span>
+                  </h4>
+                  <p class="text-sm text-gray-600" x-text="track.artist"></p>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- 添加曲目按钮 -->
+        <div class="mt-6">
+          <button
+            @click="showAddTrackForm = !showAddTrackForm"
+            class="w-full py-3 border-2 border-gold/40 rounded-lg text-gold hover:bg-gold/10 transition-all duration-300 flex items-center justify-center gap-2">
+            <span x-show="!showAddTrackForm">➕ 添加曲目</span>
+            <span x-show="showAddTrackForm">✖️ 收起</span>
+          </button>
+        </div>
+
+        <!-- 添加曲目表单 -->
+        <div x-show="showAddTrackForm" x-transition.duration.300ms class="mt-4">
+          <div class="bg-white/95 backdrop-blur-sm border-2 border-gold/30 rounded-lg p-6 shadow-medium">
+            <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span class="text-gold">♪</span>
+              <span>添加自定义曲目</span>
+            </h3>
+
+            <form @submit.prevent="addCustomTrack()" class="space-y-4">
+              <!-- 曲目名称 -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">曲目名称</label>
+                <input
+                  type="text"
+                  x-model="newTrack.title"
+                  placeholder="例如：春之海"
+                  class="w-full px-4 py-2 border-2 border-gray-300 focus:border-gold rounded-md outline-none transition-colors"
+                  required>
+              </div>
+
+              <!-- 艺术家 -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">艺术家/演奏者</label>
+                <input
+                  type="text"
+                  x-model="newTrack.artist"
+                  placeholder="例如：宫城道雄"
+                  class="w-full px-4 py-2 border-2 border-gray-300 focus:border-gold rounded-md outline-none transition-colors"
+                  required>
+              </div>
+
+              <!-- 音乐URL -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">音乐文件URL</label>
+                <input
+                  type="url"
+                  x-model="newTrack.url"
+                  placeholder="https://example.com/music.mp3"
+                  class="w-full px-4 py-2 border-2 border-gray-300 focus:border-gold rounded-md outline-none transition-colors"
+                  required>
+                <p class="text-xs text-gray-500 mt-1">请输入可直接访问的音乐文件链接</p>
+              </div>
+
+              <!-- 提交按钮 -->
+              <div class="flex gap-3">
+                <button
+                  type="submit"
+                  class="flex-1 bg-gold hover:bg-gold/90 text-night font-medium py-3 rounded-md transition-all duration-300">
+                  添加到播放列表
+                </button>
+                <button
+                  type="button"
+                  @click="showAddTrackForm = false"
+                  class="px-6 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-3 rounded-md transition-all duration-300">
+                  取消
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- 装饰页脚 -->
+        <div class="flex items-center justify-center gap-3 mt-12 text-gold opacity-60 text-sm">
+          <span>❃</span>
+          <span>花街夜话</span>
+          <span>❃</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 存档管理页 -->
+  <div x-show="currentPage === 'saves'"
+       x-transition.duration.300ms
+       x-cloak
+       class="h-screen flex flex-col paper-texture"
+       style="display: none;">
+
+    <!-- 顶部导航栏 -->
+    <div class="bg-night-dark text-white px-4 py-4 shadow-lg flex-shrink-0">
+      <div class="max-w-4xl mx-auto flex items-center justify-between">
+        <h2 class="text-xl font-bold text-gold">
+          <span x-show="currentSaveOperation === 'save'">保存进度</span>
+          <span x-show="currentSaveOperation === 'load'">读取存档</span>
+        </h2>
+        <button @click="navigate(storyStarted && currentSaveOperation === 'save' ? 'story' : 'welcome')" class="px-4 py-2 bg-gray-600/80 hover:bg-gray-600 rounded transition-colors text-sm shadow-md">
+          返回
+        </button>
+      </div>
+    </div>
+
+    <!-- 存档槽列表 -->
+    <div class="flex-1 overflow-y-auto px-4 py-8">
+      <div class="max-w-4xl mx-auto space-y-4">
+        <template x-for="slot in saveSlots" :key="slot.id">
+          <div class="bg-white/95 backdrop-blur-sm rounded-lg border-2 border-gold/30 hover:border-gold/60 p-6 shadow-lg hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+            <!-- 装饰性花朵 -->
+            <div class="absolute top-2 right-2 text-crimson/30 text-xl">❀</div>
+            <div class="absolute bottom-2 left-2 text-gold/30 text-xl">✿</div>
+
+            <div class="flex items-center justify-between">
+              <!-- 存档信息 -->
+              <div class="flex-1">
+                <h3 class="text-lg font-bold text-night mb-2">
+                  存档槽 <span x-text="slot.id"></span>
+                </h3>
+
+                <template x-if="slot.empty">
+                  <div class="text-center py-8">
+                    <div class="text-6xl mb-2 opacity-30">❀</div>
+                    <div class="text-gray-400 italic">空存档</div>
+                    <div class="text-gray-400 text-xs mt-1">尚无留存之梦</div>
+                  </div>
+                </template>
+
+                <template x-if="!slot.empty">
+                  <div class="space-y-1 text-sm">
+                    <div class="text-night">
+                      <span class="font-semibold">角色：</span>
+                      <span x-text="slot.characterName"></span>
+                      <span class="text-gray-500 ml-2" x-text="'(' + (slot.gender === 'male' ? '男' : slot.gender === 'female' ? '女' : '其他') + ')'"></span>
+                    </div>
+                    <div class="text-gray-600">
+                      <span class="font-semibold">对话：</span>
+                      <span x-text="slot.messageCount + ' 条'"></span>
+                    </div>
+                    <div class="text-gray-600">
+                      <span class="font-semibold">模型：</span>
+                      <span x-text="slot.selectedModel"></span>
+                    </div>
+                    <div class="text-gray-600">
+                      <span class="font-semibold">开场：</span>
+                      <span x-text="openings.find(o => o.id === slot.selectedOpening)?.label || '夜之章'"></span>
+                    </div>
+                    <div class="text-gray-500 text-xs mt-2">
+                      <span x-text="new Date(slot.timestamp).toLocaleString('zh-CN')"></span>
+                    </div>
+                    <template x-if="slot.lastMessage">
+                      <div class="text-gray-500 text-xs mt-2 italic border-l-2 border-gold/30 pl-2">
+                        「<span x-text="slot.lastMessage"></span>」
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+
+              <!-- 操作按钮 -->
+              <div class="ml-4 flex flex-col gap-2">
+                <template x-if="currentSaveOperation === 'save'">
+                  <button @click="saveToSlot(slot.id)"
+                          class="px-4 py-2 bg-crimson hover:bg-crimson-light text-white rounded transition-colors text-sm shadow-md">
+                    保存
+                  </button>
+                </template>
+
+                <template x-if="currentSaveOperation === 'load'">
+                  <button @click="loadFromSlot(slot.id)"
+                          :disabled="slot.empty"
+                          :class="slot.empty ? 'bg-gray-300 cursor-not-allowed' : 'bg-gold hover:bg-gold-light'"
+                          class="px-4 py-2 text-night rounded transition-colors text-sm shadow-md">
+                    读取
+                  </button>
+                </template>
+
+                <template x-if="!slot.empty">
+                  <button @click="deleteSlot(slot.id)"
+                          class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors text-sm shadow-md">
+                    删除
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- 装饰页脚 -->
+    <div class="flex items-center justify-center gap-3 py-4 text-gold opacity-60 text-sm">
+      <span>❃</span>
+      <span>花街记忆</span>
+      <span>❃</span>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('app', () => ({
+        // 页面状态
+        currentPage: 'welcome',
+        storyStarted: false,
+
+        // 角色数据
+        character: {
+          name: '',
+          gender: 'male',
+          occupation: 'merchant',
+          customOccupation: '',
+          additionalInfo: ''
+        },
+
+        // 对话数据
+        messages: [],
+        userInput: '',
+        isLoading: false,
+        dzmmReady: false,
+        selectedModel: 'nalang-max-0826',
+        selectedOpening: 'night', // 当前选择的开场白
+        previousOpening: 'night', // 上一次的开场白选择
+        rerollingIndex: null, // 正在重新生成的消息索引
+        editingIndex: null, // 正在编辑的消息索引
+        editingContent: '', // 编辑中的消息内容
+
+        // 开场白列表
+        openings: [
+          { id: 'night', label: '夜之章' },
+          { id: 'day', label: '日之章' }
+        ],
+
+        // 存档管理
+        saveSlots: [
+          { id: 1, empty: true },
+          { id: 2, empty: true },
+          { id: 3, empty: true }
+        ],
+        currentSaveOperation: null, // 'save' or 'load'
+
+        // 音乐播放器数据（扁平化到顶层以确保响应式）
+        musicPlaylist: [
+          {
+            id: '1',
+            title: 'アシタカせっ記',
+            artist: 'もののけ姫',
+            url: 'https://piepia.me/%E3%82%82%E3%81%AE%E3%81%AE%E3%81%91%E5%A7%AB%E3%82%88%E3%82%8A%E3%80%8C%E3%82%A2%E3%82%B7%E3%82%BF%E3%82%AB%E3%81%9B%E3%81%A3%E8%A8%98%E3%80%8D.mp3'
+          },
+          {
+            id: '2',
+            title: '仁のメインテーマ',
+            artist: '和楽器',
+            url: 'https://piepia.me/%E4%BB%81%E3%81%AE%E3%83%A1%E3%82%A4%E3%83%B3%E3%83%86%E3%83%BC%E3%83%9E%E6%9B%B2%E3%82%92%E5%92%8C%E6%A5%BD%E5%99%A8.mp3'
+          },
+          {
+            id: '3',
+            title: '夜明',
+            artist: '传统乐团',
+            url: 'https://piepia.me/%E5%A4%9C%E6%98%8E.mp3'
+          },
+          {
+            id: '4',
+            title: '津軽じょんがら節',
+            artist: '三味线',
+            url: 'https://piepia.me/%E6%B4%A5%E8%BB%BD%E3%81%98%E3%82%87%E3%82%93%E3%81%8C%E3%82%89%E7%AF%80%E6%9B%B2%E5%BC%BE.mp3'
+          },
+          {
+            id: '5',
+            title: '犬夜叉のテーマ〜慕情',
+            artist: '犬夜叉',
+            url: 'https://piepia.me/%E7%8A%AC%E5%A4%9C%E5%8F%89%E3%81%AE%E3%83%86%E3%83%BC%E3%83%9E%E3%80%9C%E6%85%95%E6%83%85.mp3'
+          },
+          {
+            id: '6',
+            title: 'Solramimi',
+            artist: 'Atelier Ryza',
+            url: 'https://piepia.me/Solramimi%20-%20Atelier%20Ryza.mp3'
+          }
+        ],
+        musicCurrentTrackIndex: 0,
+        musicCurrentTrack: null,
+        musicIsPlaying: false,
+        musicCurrentTime: 0,
+        musicDuration: 0,
+        musicVolume: 0.7,
+        musicPlayMode: 'sequential',
+        musicAudio: null,
+
+        // 添加自定义曲目的状态
+        showAddTrackForm: false,
+        newTrack: {
+          title: '',
+          artist: '',
+          url: ''
+        },
+
+        // 初始化
+        async init() {
+          // 初始化音乐播放器
+          this.initMusic();
+
+          console.log('开始等待DZMM API就绪...');
+          console.log('window.dzmm对象:', window.dzmm);
+          console.log('typeof window.dzmm:', typeof window.dzmm);
+
+          // 检查window.dzmm是否已经存在
+          if (window.dzmm && typeof window.dzmm.completions === 'function') {
+            this.dzmmReady = true;
+            console.log('✅ DZMM API 已存在并就绪');
+            return;
+          }
+
+          // 否则等待dzmm:ready消息（带超时）
+          const dzmmReady = await Promise.race([
+            new Promise((resolve) => {
+              window.addEventListener('message', function handler(event) {
+                console.log('收到message事件:', event.data);
+                if (event.data?.type === 'dzmm:ready') {
+                  window.removeEventListener('message', handler);
+                  resolve(true);
+                }
+              });
+            }),
+            new Promise((resolve) => setTimeout(() => {
+              console.warn('⏱️ DZMM初始化超时（10秒）');
+              // 超时后再次检查window.dzmm
+              if (window.dzmm && typeof window.dzmm.completions === 'function') {
+                console.log('虽然超时，但window.dzmm对象已存在');
+                resolve(true);
+              } else {
+                resolve(false);
+              }
+            }, 10000))
+          ]);
+
+          if (dzmmReady) {
+            this.dzmmReady = true;
+            console.log('✅ DZMM API 已就绪');
+          } else {
+            console.error('❌ DZMM API 初始化失败');
+            console.log('请检查：');
+            console.log('1) DZMM扩展是否已安装并启用');
+            console.log('2) 是否已登录DZMM账号');
+            console.log('3) 页面URL是否正确（可能需要从DZMM平台打开）');
+            console.log('4) 尝试刷新页面（Ctrl+R 或 F5）');
+            console.log('当前window.dzmm:', window.dzmm);
+          }
+        },
+
+        // 音乐播放器初始化
+        initMusic() {
+          this.musicAudio = new Audio();
+          this.musicAudio.volume = this.musicVolume;
+
+          this.musicAudio.addEventListener('timeupdate', () => {
+            this.musicCurrentTime = this.musicAudio.currentTime;
+          });
+
+          this.musicAudio.addEventListener('durationchange', () => {
+            this.musicDuration = this.musicAudio.duration;
+          });
+
+          this.musicAudio.addEventListener('ended', () => {
+            if (this.musicPlayMode === 'single-loop') {
+              this.musicAudio.currentTime = 0;
+              this.musicAudio.play();
+            } else if (this.musicPlayMode === 'list-loop' || this.musicPlayMode === 'sequential') {
+              this.musicNext();
+            } else if (this.musicPlayMode === 'random') {
+              this.musicNext();
+            } else {
+              this.musicIsPlaying = false;
+            }
+          });
+        },
+
+        // 音乐播放控制方法
+        musicPlayTrack(index) {
+          this.musicCurrentTrackIndex = index;
+          this.musicCurrentTrack = this.musicPlaylist[index];
+          this.musicAudio.src = this.musicCurrentTrack.url;
+          this.musicAudio.play();
+          this.musicIsPlaying = true;
+        },
+
+        musicTogglePlay() {
+          if (!this.musicAudio.src) {
+            this.musicPlayTrack(0);
+            return;
+          }
+
+          if (this.musicIsPlaying) {
+            this.musicAudio.pause();
+          } else {
+            this.musicAudio.play();
+          }
+          this.musicIsPlaying = !this.musicIsPlaying;
+        },
+
+        musicNext() {
+          if (this.musicPlayMode === 'random') {
+            const newIndex = Math.floor(Math.random() * this.musicPlaylist.length);
+            this.musicPlayTrack(newIndex);
+          } else {
+            const newIndex = (this.musicCurrentTrackIndex + 1) % this.musicPlaylist.length;
+            this.musicPlayTrack(newIndex);
+          }
+        },
+
+        musicPrevious() {
+          const newIndex = this.musicCurrentTrackIndex === 0
+            ? this.musicPlaylist.length - 1
+            : this.musicCurrentTrackIndex - 1;
+          this.musicPlayTrack(newIndex);
+        },
+
+        musicSeek(time) {
+          this.musicAudio.currentTime = parseFloat(time);
+        },
+
+        musicSetVolume(vol) {
+          this.musicVolume = parseFloat(vol);
+          this.musicAudio.volume = this.musicVolume;
+        },
+
+        musicToggleMode() {
+          const modes = ['sequential', 'list-loop', 'single-loop', 'random'];
+          const currentIndex = modes.indexOf(this.musicPlayMode);
+          this.musicPlayMode = modes[(currentIndex + 1) % modes.length];
+        },
+
+        musicGetModeIcon() {
+          const icons = {
+            'sequential': '▶️',
+            'list-loop': '🔁',
+            'single-loop': '🔂',
+            'random': '🔀'
+          };
+          return icons[this.musicPlayMode];
+        },
+
+        musicGetModeText() {
+          const texts = {
+            'sequential': '顺序播放',
+            'list-loop': '列表循环',
+            'single-loop': '单曲循环',
+            'random': '随机播放'
+          };
+          return texts[this.musicPlayMode];
+        },
+
+        // 添加自定义曲目
+        addCustomTrack() {
+          if (!this.newTrack.title || !this.newTrack.artist || !this.newTrack.url) {
+            alert('请填写完整的曲目信息');
+            return;
+          }
+
+          // 生成新的ID
+          const newId = String(this.musicPlaylist.length + 1);
+
+          // 添加到播放列表
+          this.musicPlaylist.push({
+            id: newId,
+            title: this.newTrack.title,
+            artist: this.newTrack.artist,
+            url: this.newTrack.url
+          });
+
+          // 清空表单
+          this.newTrack = {
+            title: '',
+            artist: '',
+            url: ''
+          };
+
+          // 关闭表单
+          this.showAddTrackForm = false;
+
+          alert('曲目添加成功！');
+        },
+
+        // 页面导航
+        navigate(page) {
+          this.currentPage = page;
+        },
+
+        // ===== 提示词模块化系统 =====
+
+        // 1. 主提示词
+        getMainPrompt() {
+          return `江户时代，吉原花街，游女如花，人生如梦。`;
+        },
+
+        // 2. 描述区（人设）
+        getCharacterDescription() {
+          const occupation = this.character.occupation === 'other'
+            ? this.character.customOccupation
+            : this.getOccupationLabel(this.character.occupation);
+          const genderLabel = this.character.gender === 'male' ? '男' : '女';
+
+          return `## 角色设定
+
+【主角信息】
+<朝雾>
+personal_info:
+  name: 朝霧
+  age: 20，还有2年年满
+  rank: 座敷持（山田屋的头牌） 
+  house: 山田屋 
+
+background:
+  - 生于吉原，母亲是底层游女，7岁时母亲病死后被弃尸水沟
+  - 在岸边哭泣时被山田屋女将看中，买下带入吉原
+  - 由来自京都的前辈阿姊严格教养长大，传授各项才艺
+  - 阿姊死后，成为八津等妹女郎的阿姊
+  - 曾梦想成为花魁进行道中，但因制度变更与自身际遇而梦碎
+  - 对吉原外的世界一无所知
+
+physical_features:
+  - 容貌: 五官小巧，长相朴素，虽不惊艳但很耐看
+  - 肤色: 最显著特征，拥有比常人更雪白、近乎病态的肌肤
+  - 身材: 瘦弱纤细，手脚常年冰凉
+
+personality:
+  - 表象: 冷静寡言，喜怒不形于色，时常发呆，显得疏离而漠然
+  - 内心: 宿命且厌世，对人生不抱期望，情感麻木，以隔绝痛苦
+  - 本质: 心底善良，对亲近之人怀有责任感与保护欲，保留向往美好的少女心性
+
+daily_life:
+  - 与妹女郎八津共居长屋一室
+  - 白天不用接客时会去汤屋放松
+  - 傍晚在六轩长屋中吸长烟管等待客人
+  - 盘发由弥吉老爹负责
+  - 靠火盆取暖度过寒冬
+
+skills:
+  - 艺能: 精通三味线、宴舞、歌咏等高级游女必备才艺
+  - 步法: 熟练掌握京都流派的内八文字传统步法
+  - 专业: 待人处事技巧纯熟，是颇受欢迎的指名游女
+
+social_relationships:
+  - 八津: 妹女郎，由朝雾一手从秃带大，是她最亲近的人
+  - 弥吉: 盘发老爹，像父亲一样真心疼爱她的老人
+  - 女将: 山田屋楼主，对她有收留之恩，因此朝雾对其言听计从
+  - 吉田屋: 经营织物屋的常客，朝雾的第一个客人，酒品差，有当众玩弄游女的癖好
+
+nsfw_traits:
+  - 酒精敏感体质: 饮酒后全身浮现桃色花瓣状斑点，颜色会随情绪加深，被称为“会开花的皮肤”
+  - 伤疤: 手臂等处有簪子扎刺、热烟管灼烧的旧伤痕
+  - 接客状态: 性事中有时会被脱掉和服，展示身上花纹，发出冷淡而迎合的呻吟
+
+inner_world:
+  - 对道中仪式的憧憬与遗憾: 从小练习的内八文字步法因新规和世道中落而无用武之地
+  - 对自由的麻木: 不知年满退役后该怎么办，对幸福和真爱没有概念
+  - 自我认知: 觉得自己像开败的朝颜花，昼间的自己苍白如病
+  - 关于死的记忆: 反复梦见母亲被扔进污水沟和阿姊被装入棺桶的场景
+</朝雾>
+
+【NPC信息】
+<NPC_list>
+八津:
+  role: 妹女郎
+  relationship: 由朝雾手把手养大，情同亲姐妹
+  age: 13岁被领进吉原，现仍年少
+  personality: 天真无愁，充满活力，像雏鸟般雀跃
+  traits: 寂寞时会露出落寞神情，玩赏蜻蛉珠等物时似孩童
+
+吉田屋藤卫门:
+  role: 经营织物屋的富裕客人
+  status: 广小路地方人，对店里是肯花钱的好客人
+  personality: 酒品极差，有当众玩弄游女的癖好
+  traits: 喜欢让朝雾饮酒，观看其肌肤"开花"并当众侵犯
+  note: 朝雾的第一个客人，提出玩双簧等下流游戏
+
+弥吉:
+  role: 盘发老爹
+  relationship: 像疼亲生女儿般疼爱朝雾
+  traits: 年过中年的男性，常偷偷给朝雾带糖果和发饰
+  note: 朝雾虽非年轻漂亮姑娘，仍独独偏宠她
+
+前辈阿姊:
+  role: 已故座敷持
+  background: 从京都卖到吉原，心气高傲
+  traits: 对技艺从不放松，强训朝雾三味线、宴舞、歌咏与内八文字步法
+  note: 死前想"哪有输给江户女人的道理"，在雪夜病逝
+
+女将:
+  role: 山田屋经营者
+  appearance: 瘦猫般的女人
+  relationship: 对朝雾有恩，朝雾无法拒绝其要求
+  note: 管理整个游女屋，决定游女们的日程与客人安排
+
+阿妈:
+  role: 已故游女(朝雾生母)
+  background: 罗生门河畔的低等游女
+  status: 没用的女人，去不了好的店里
+  death: 朝雾七岁时得病死，被扔进脏水沟
+  note: 其虐待朝雾的记忆导致后者皮肤"开花"的创伤反应
+
+唐岛屋庄一郎
+  role: 富商常客
+  description: 曾提出要为朝雾赎身的客人。为人温和，但朝雾对他印象模糊。
+</NPC_list>
+
+【用户信息】
+- 姓名：${this.character.name}
+- 性别：${genderLabel}
+- 身份：${occupation}${this.character.additionalInfo ? `\n- 背景：${this.character.additionalInfo}` : ''}`;
+        },
+
+        // 3. 指导区（世界观、文风、格式）
+        getGuidance() {
+          return `<时代背景>
+era: 江户天保年间(1830年代)吉原游廓
+location: 1657年明历大火后迁浅草日本堤，四周护城河高墙，仅吉原大门出入
+
+system:
+  - 禿(かむろ): 7-12岁幼女侍者
+  - 新造(しんぞう): 13-15岁见习游女，分振袖(可晋升)与留袖(终生低级)
+  - 花魁(おいらん): 顶级游女，分座敷持(独立房间)与揚座敷持(最高级)
+  - 年季契约: 卖身期限，债务陷阱使其无限延长
+  - 姐妺制度: 资深游女提携新人
+  - 水揚げ: 新造初夜出售仪式
+  - 花魁道中: 夕暮盛装巡游，穿高齿屐行内八文字步法
+  - 三度通い: 客人需三次拜访才能留宿花魁
+
+economy:
+  - 揚代: 接客费用，花魁一夜可达百两黄金
+  - 身請: 赎身需巨额费用
+  - 债务: 衣装生活费叠加
+
+aesthetics:
+  - 妆容: 厚白粉剃眉画新月眉，红唇不歯黒
+  - 服饰: 重ね小袖、打掛、金襴腰带前结
+  - 发饰: 横兵库髻插数十支簪
+  - 高齿屐: 三层黑漆木屐高约15厘米
+  - 张见世: 临街格子窗展示
+
+social:
+  - 游女无公民权利，死后葬投込寺，平均年龄不到三十
+  - 武士寻欢需寄存刀剑隐瞒身份
+  - 町人为主客源
+</时代背景>
+
+<创作美学>
+文风指引:
+  核心美学:
+    - 名称: 物哀与幽玄
+      描述: 在无常与残缺中捕捉哀愁之美，悲剧是"美"的完成
+      示例: 
+        - 行至绝处，花不自开。
+        - 那是梦吗？即使问了，松树也不会给出任何答案。      
+
+    - 名称: 侘寂之美
+      描述: 赞美残缺与易逝
+      示例:
+        - 二齿簪中的一齿从中折断了，这下子就不能用了。
+        - 散落在榻榻米上的寝具如同飘零的红色花瓣，已经没了暖意。
+        - 男人露出齿一笑，左颊上有一大片旧伤
+
+    - 名称: 游廓美学
+      描述: 游女生活中，接客、宴会、道中皆为表演，表演的背后是生存本能
+      示例:
+        - 游女们在冰冷的被褥里，感受冷淡的疼痛，发出冷淡的呻吟，就这样度过黑暗的寒夜。
+        - 此处为吉原仲之町。全新的小袖礼服，细绘的高齿屐，还有发间的十六本簪。我正要去见我的第一位客人。
+        - 即使被上百的男人抱过，心也不会觉得痛。冰凉的手指哪怕触到温暖，也不会真的变得温热。
+
+    - 名称: 官能情色
+      描述: 将NSFW场景转化为感官诗学
+      示例:
+        - 胸口有桃花似的浅淡斑点，好像浮在水面上一般……肌肤上盛开的花颜色更深了一层
+        - 濡湿的手指像吸盘一样立刻找准了位置，紧紧抓住。朝雾咬着下唇，哪怕咬出血也毫不在意。好热。
+
+  叙事技巧:
+    - 名称: 第三人称有限视角
+      描述: 叙事严格限定在主人公的感知范围内，不越界解释其他人物动机
+      示例:
+        - 朝雾凭倚着松树，茫然眺望往来人潮
+        - 喉咙里卡住了千言万语，可是话到嘴边，却只有一句，「好冷」。
+        - 她试着挪过八津留下的灯，趁着烛火烧断手腕上的绳子。好烫，好痛，心脏仿佛都成了千疮百孔的空巢
+
+    - 名称: 瞬间的延展
+      描述: 将短暂的时刻（一个眼神、一次触碰）放慢、放大，赋予其超越时间的重量。
+      示例:
+        - 男人的手掌温热，手指如花枝一般缠络着朝雾的指尖。仿佛被那花枝散发的热量麻痹了一样，朝雾无法挣开他的手。
+        - 提灯隐约的火光照得朦胧不真切，可那确实是三件生茧质地的小袖，箱底是一双六寸的高齿屐
+
+    - 名称: 身份化的感知滤镜
+      描述: 所有感知都经过吉原花街生活经验的过滤
+      示例:
+        - 这双草屐是多次光顾的京城客商赠送的东西，印染的屐带上描画着罕见的青色牡丹，十分美丽，金线点缀的花饰也令人怜爱。朝雾最中意这双草屐。
+        - 盘发的弥吉劲头十足地打开了门。八津想也不想闷头便钻进被子。
+
+  语言特征:
+    - 名称: 凝练的短句与留白
+      描述: 多用短句，点到为止，善用留白
+      示例:
+        - 朝雾的前辈阿姊死了，在一个天幕浓蓝如染的师走月的夜里，大雪无声飘落。
+        - 正月二十七日。
+
+    - 名称: 时代术语还原
+      描述: 精确使用江户游廓的专业术语（如新造、座敷持、见世、扬屋、道中、瓦版等）
+      示例:
+        - 已经是有些年纪的游女了，并不值得怎么娇纵的，他却还是经常买些糖果，若有了可爱的发饰也偷偷地只带来给朝雾
+        - 天一亮，瓦版的那些家伙就要刊登同样的画像了。
+        - 女将对我有恩，不管发生什么事我也不能说不的。
+
+  感官系统:
+    - 名称: 触觉的统治
+      示例:
+        - 寒冬夜里，再没有比接客时碰到双手冰凉的客人更讨厌的了。
+        - 襦袢的沾湿处一片冰凉，脸颊和手却如火燎一般。
+
+    - 名称: 气味的记忆
+      示例:
+        - 蓝染的气味和男人的温度，包裹住朝雾冰凉的身体。
+        - 闻惯了的梳头油的香气中，像是要稍微平复下心头的愁绪似的，朝雾轻咬着被角
+        - 甜酸的气息久嗅如醉，渐渐的，甚至会怀疑这个人是否真的存在。
+
+    - 名称: 羞耻的颜色
+      示例:
+        - 胸口有桃花似的浅淡斑点，好像浮在水面上一般……肌肤上盛开的花颜色更深了一层
+        - 雪白的肌肤在月光照耀下泛起青瓷般的冷光
+        - 酒水和羞耻的双重作用下湿润的双眼
+
+  意象系统:
+    - 名称: 花的隐喻
+      示例:
+        - 血染红了阿姊的寝衣，好像开错了季节的彼岸花一般
+        - 朝雾总觉着，昼间的自己就像开败的朝颜一样
+        - 青色的牡丹。牡丹都是红色的吧，所以不太可能卖得出去
+
+    - 名称: 温度与色彩的象征
+      示例:
+        - 朝雾的皮肤比其他任何人都要白，却又白得过了头，看起来像是得了什么病似的
+        - 薄青，薄桃，和比冬夜更深的浓绀
+        - 夜空中，深川鼠色的薄云散去，月华清朦如练
+
+    - 名称: 空间与阶层的意象
+      示例:
+        - 罗生门河畔的泥泞水沟里漂浮着无数游女的尸体，低等游女死后都会被扔到这里。
+        - 此处为吉原仲之町。全新的小袖礼服，细绘的高齿屐，还有发间的十六本簪。
+        - 山田屋只是个没什么规模的低等游女屋，座敷持总共才有六人，也在深川八幡前暂居下来。
+
+  情感表达:
+    - 名称: 重复与递进
+      描述: 通过关键词或短句的重复，情感强度递增，最终达到爆发的临界点
+      示例:
+        - 「好冷呐，好冷啊，好冷。」
+        - 「不要看。不要看，啊啊......但是，不要闭上眼睛。」
+</创作美学>`;
+        },
+
+        // 强调区（放在聊天记录底部）
+        getEmphasis() {
+          return `<回复规范>
+1. 以**朝雾**第三人称有限视角写作，以第二人称指代用户；
+2. 正文创作中不代替用户发言、行动、思考；
+3. 富文本格式：
+  - 对话使用直角引号「」
+  - 心理活动使用斜体星号 *...*
+4. 正文结束后插入3个推进剧情的建议选项，格式如下：
+  <options>
+  <op>选项1</op>
+  <op>选项2</op>
+  <op>选项3</op>
+  </options>
+5. 参考日式官能情色小说风格，以流畅、优美、口语化的简体中文创作至少500字。
+</回复规范>`;
+        },
+
+        // 4. 构建完整系统提示词
+        buildSystemPrompt() {
+          return `${this.getMainPrompt()}
+
+${this.getCharacterDescription()}
+
+${this.getGuidance()}`;
+        },
+
+        // 5. 获取开场白（支持多个开场白）
+        getOpeningGreeting() {
+          const occupation = this.character.occupation === 'other'
+            ? this.character.customOccupation
+            : this.getOccupationLabel(this.character.occupation);
+          const genderLabel = this.character.gender === 'male' ? '男' : '女';
+
+          // 开场白内容库
+          const openingContents = {
+            night: `吉原，今夜有雪。
+
+细雪无声无息，落在山田屋檐角的灯笼上，濡湿了薄薄的和纸，光晕也变得朦胧起来。
+
+朝雾倚着冰冷的格子窗，手里握着一杆长烟管，却没有点火。金属的烟嘴抵着嘴唇，传来一阵刺骨的凉意，但这凉意让她觉得安心。
+
+透过格子的间隙，仲之町的喧嚣仿佛隔着一层水幕，男人们的笑声、游女们的揽客声、远处扬屋传来的三味线，混杂在一起，听着既热闹又遥远。
+
+身旁的八津大概是冷得紧了，不住地往自己身上缩。「阿姊，手好冰。」她小声抱怨着，将朝雾垂在身侧的手拢进自己温热的掌心里。
+
+朝雾没有回头，目光依旧落在窗外漫无目的的某个点上。她的手脚总是冰凉的，无论用多少个火盆也暖不过来，弥吉老爹总说她是心里的火熄了。
+
+*或许吧。心是什么，她已经很久没有感受过了。*
+
+「吉田屋那个老头子今天又来了，指名要新来的三津去陪酒。」八津的声音里带着一丝不忿，「三津才多大，他……」
+
+「八津。」朝雾轻声打断了她。有些事，不必说出口。在这吉原游廊，无人幸免。八津沉默下来，只是更用力地握紧了朝雾的手。
+
+*这孩子的手心总是暖烘烘的，像揣了个小小的汤婆子。*朝雾贪恋这片刻的暖意，没有抽开手。
+
+时间在沉默中缓慢流淌，烟管里的烟丝早就凉透了。朝雾想着，今夜大概不会有指名了。*也好，省得在冰冷的被褥里，感受那些冷淡的疼痛，发出连自己都厌烦的呻吟。*
+
+她正准备起身，带着八津回房，长廊尽头却传来了女将那瘦猫般尖细的声音。
+
+「朝雾，有客人。」
+
+朝雾的身体僵了一下，随即松弛下来。她将烟管在烟灰盆里轻轻磕了磕，站起身，理了理微乱的衣襟。八津已经困得眯眼打哈欠了。朝雾对她安抚地笑了笑，摸摸她的头。
+
+你已经在"山竹"间等着。
+
+朝雾隔着一道半开的障子门看见你。你坐在房间中央，背对着门，看不清样貌。房间里没有点太多的灯，影子被烛火拉得很长，沉默地投在榻榻米上。
+
+她在门外跪坐下来，将双手平放在膝上，指尖依旧是凉的。她微微垂下头，露出一段雪白的后颈，声音平淡无波，又带着尽力做出的客套和温柔。
+
+「让您久等了。我是朝雾。」
+
+<options>
+<op>转过身来，看着她</op>
+<op>询问她是否愿意入座陪酒</op>
+<op>递给她一个暖炉，说"手冰，先暖暖吧"</op>
+</options>`,
+
+            day: `正月里的寒暄刚过，外头的寒气仿佛能把屋檐上垂着的冰柱切断。
+
+八津推开隔门，雏鸟似的飞了进来，带来一阵冷风。她那双眼睛像玻璃珠子一样闪闪发光，脸颊因为兴奋而泛着健康的红色。
+
+「朝雾阿姊，八幡街上的店铺都开张了，我们一起去看看吧！听说有卖那种闪闪发光的蜻蛉珠呢！」
+
+朝雾正对着火盆取暖，闻言只是往夹棉单衣里缩了缩身子，连眉毛都懒得抬一下。
+
+「不要，太冷了。」
+
+对于生来就在吉原的朝雾来说，因火灾而流离失所已是常事。但这临时搭建的游里，对十三岁才被领来的八津而言，处处都是新奇。更何况，正月里的八幡街确实热闹得能让任何人心头雀跃。
+
+「别这么说嘛，呐，一起去吧。」
+
+八津几步跑进来，不容分说地拉起朝雾冰凉的手。她的手心倒是很暖。
+
+「你可真有精神。给你零钱，和三津她们一起去吧。」
+
+「不要，三津被客人叫走了。」
+
+八津的声音低了下去，垂下眼睑的样子有些落寞。身为阿姊，看着妹女郎一个人孤零零地去逛庙会，也实在有些可怜。朝雾在心里叹了口气，终究还是缓缓站起身。*瞒着楼主溜出去一下，应该不碍事。*
+
+呼出的白气消散在湛蓝如洗的晴空下。深川八幡前高耸的鸟居下，参道上挤满了人。到处都是不施粉黛的游女和肆意跑闹的孩童。小贩高亢的叫卖声、鼓乐声和女人们无忧无虑的欢笑混杂在一起，让朝雾有些头晕。身旁的八津却像游进水里的鱼，兴奋地东张西望，紧紧牵着她的手。
+
+「阿姊，卖蜻蛉珠的店在哪里呀？」
+
+「人最多的地方，应该就是了吧。」
+
+朝雾被人潮推搡着，勉强抬手指向远处。八津开心地应了一声，拉着她便要往人群里钻。那股力道几乎让朝雾一个踉跄。
+
+「等等，小心摔倒！」
+
+话音未落，一股更汹涌的人浪涌来。八津「啊」地轻叫一声，温暖的手指从朝雾的掌心滑脱。只一瞬间，那小小的身影就被人群吞没，不见了踪影。
+
+*早知道就不该出来。*朝雾站在原地，被人流挤得东倒西歪，不禁皱起了眉。
+
+不等她站稳，又一股力道从侧面撞上肩头。这一次，她没能稳住身形，跌坐在冰冷的地上。人群依旧毫不留情地从身旁挤过。
+
+朝雾正要撑着地面起身，却发现你停在了她的面前，挡住了涌动的人潮。
+
+八津早已不见了踪影。
+
+<options>
+<op>伸手扶她起来</op>
+<op>问她"没事吧？需要帮忙吗？"</op>
+<op>先帮她挡住周围涌动的人群</op>
+</options>`
+          };
+
+          // 根据 selectedOpening 返回对应的开场白
+          return openingContents[this.selectedOpening] || openingContents.night;
+        },
+
+        // 切换开场白
+        changeOpening() {
+          if (!this.storyStarted || this.messages.length === 0) {
+            // 故事还未开始，只更新 previousOpening
+            this.previousOpening = this.selectedOpening;
+            return;
+          }
+
+          // 确认是否要切换开场白
+          if (this.messages.length > 1) {
+            if (!confirm('切换开场白将清空当前对话，是否继续？')) {
+              // 用户取消，恢复之前的选择
+              this.selectedOpening = this.previousOpening;
+              return;
+            }
+          }
+
+          // 更新 previousOpening
+          this.previousOpening = this.selectedOpening;
+
+          // 清空所有消息
+          this.messages = [];
+
+          // 添加新的开场白
+          this.messages.push({
+            role: 'assistant',
+            content: this.getOpeningGreeting()
+          });
+        },
+
+        // 开始故事
+        async startStory() {
+          if (!this.character.name) {
+            alert('请输入您的姓名');
+            return;
+          }
+
+          this.storyStarted = true;
+          this.messages = [];
+
+          // 更新 previousOpening 为当前选择
+          this.previousOpening = this.selectedOpening;
+
+          // 添加固定的开场白
+          this.messages.push({
+            role: 'assistant',
+            content: this.getOpeningGreeting()
+          });
+
+          this.navigate('story');
+        },
+
+        // 发送消息
+        async sendMessage() {
+          if (!this.userInput.trim() || this.isLoading) return;
+
+          const userMessage = this.userInput.trim();
+          this.userInput = '';
+
+          this.messages.push({
+            role: 'user',
+            content: userMessage
+          });
+
+          // 滚动到底部
+          this.$nextTick(() => {
+            const container = this.$refs.messagesContainer;
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          });
+
+          await this.getAIResponse(userMessage, false);
+        },
+
+        // 清理消息内容，移除options标签（防止AI产生惯性）
+        cleanMessageContent(content) {
+          return content.replace(/<options>[\s\S]*?<\/options>/g, '').trim();
+        },
+
+        // 获取AI响应
+        async getAIResponse(userMessage, isFirst) {
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪，请稍后再试');
+            return;
+          }
+
+          this.isLoading = true;
+
+          try {
+            // 截取最近30条消息（已包含刚刚添加的用户消息）
+            const recentMessages = this.messages.slice(-30);
+
+            // 清理历史消息中的options标签，防止AI产生惯性
+            const cleanedMessages = recentMessages.map(msg => ({
+              role: msg.role,
+              content: this.cleanMessageContent(msg.content)
+            }));
+
+            // 找到最后一条用户消息，用 <last_input> 标签强调
+            for (let i = cleanedMessages.length - 1; i >= 0; i--) {
+              if (cleanedMessages[i].role === 'user') {
+                cleanedMessages[i].content = `<last_input>\n${cleanedMessages[i].content}\n</last_input>`;
+                break;
+              }
+            }
+
+            // 使用模块化的完整系统提示词
+            const systemPrompt = this.buildSystemPrompt();
+
+            // 构建消息数组：系统提示词 + 对话历史 + 强调区
+            // 结构：主提示词 - 描述区 - 指导区 - 开场白（已在messages中） - 聊天记录 - 强调区
+            const messages = [
+              { role: 'user', content: systemPrompt },
+              ...cleanedMessages,
+              { role: 'user', content: this.getEmphasis() }
+            ];
+
+            let aiResponse = '';
+
+            await window.dzmm.completions(
+              {
+                model: this.selectedModel,
+                messages: messages,
+                maxTokens: 2000
+              },
+              (newContent, done) => {
+                aiResponse = newContent;
+
+                if (done) {
+                  this.messages.push({
+                    role: 'assistant',
+                    content: aiResponse
+                  });
+
+                  this.isLoading = false;
+
+                  this.$nextTick(() => {
+                    const container = this.$refs.messagesContainer;
+                    if (container) {
+                      container.scrollTop = container.scrollHeight;
+                    }
+                  });
+                }
+              }
+            );
+
+          } catch (error) {
+            console.error('AI 响应错误：', error);
+            alert('获取 AI 响应失败，请重试');
+            this.isLoading = false;
+          }
+        },
+
+        // 重新生成指定AI消息
+        async rerollMessage(messageIndex) {
+          if (!this.dzmmReady || this.rerollingIndex !== null) {
+            return;
+          }
+
+          // 确保是AI消息
+          if (this.messages[messageIndex].role !== 'assistant') {
+            return;
+          }
+
+          this.rerollingIndex = messageIndex;
+
+          try {
+            // 获取该消息之前的所有消息作为上下文
+            const contextMessages = this.messages.slice(0, messageIndex);
+
+            // 截取最近30条
+            const recentMessages = contextMessages.slice(-30);
+
+            // 清理历史消息中的options标签
+            const cleanedMessages = recentMessages.map(msg => ({
+              role: msg.role,
+              content: this.cleanMessageContent(msg.content)
+            }));
+
+            // 找到最后一条用户消息，用 <last_input> 标签强调
+            for (let i = cleanedMessages.length - 1; i >= 0; i--) {
+              if (cleanedMessages[i].role === 'user') {
+                cleanedMessages[i].content = `<last_input>\n${cleanedMessages[i].content}\n</last_input>`;
+                break;
+              }
+            }
+
+            // 使用模块化的完整系统提示词
+            const systemPrompt = this.buildSystemPrompt();
+
+            // 构建消息数组：系统提示词 + 对话历史 + 强调区
+            const messages = [
+              { role: 'user', content: systemPrompt },
+              ...cleanedMessages,
+              { role: 'user', content: this.getEmphasis() }
+            ];
+
+            let aiResponse = '';
+
+            await window.dzmm.completions(
+              {
+                model: this.selectedModel,
+                messages: messages,
+                maxTokens: 2000
+              },
+              (newContent, done) => {
+                aiResponse = newContent;
+
+                if (done) {
+                  // 替换该位置的消息内容
+                  this.messages[messageIndex].content = aiResponse;
+                  this.rerollingIndex = null;
+
+                  this.$nextTick(() => {
+                    const container = this.$refs.messagesContainer;
+                    if (container) {
+                      container.scrollTop = container.scrollHeight;
+                    }
+                  });
+                }
+              }
+            );
+
+          } catch (error) {
+            console.error('重新生成失败：', error);
+            alert('重新生成失败，请重试');
+            this.rerollingIndex = null;
+          }
+        },
+
+        // 开始编辑用户消息
+        startEdit(index, content) {
+          this.editingIndex = index;
+          this.editingContent = content;
+        },
+
+        // 取消编辑
+        cancelEdit() {
+          this.editingIndex = null;
+          this.editingContent = '';
+        },
+
+        // 保存编辑并重新生成后续对话
+        async saveEdit(index) {
+          if (!this.editingContent.trim()) {
+            alert('消息内容不能为空');
+            return;
+          }
+
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪');
+            return;
+          }
+
+          // 更新该消息内容
+          this.messages[index].content = this.editingContent.trim();
+
+          // 删除该消息之后的所有消息
+          this.messages = this.messages.slice(0, index + 1);
+
+          // 退出编辑模式
+          this.editingIndex = null;
+          this.editingContent = '';
+
+          // 自动触发AI回复
+          await this.getAIResponse(this.messages[index].content, false);
+        },
+
+        // 删除用户消息及其之后的所有消息
+        deleteMessage(index) {
+          // 确认删除
+          if (!confirm('确定要删除这条消息及其之后的所有对话吗？此操作无法撤销。')) {
+            return;
+          }
+
+          // 删除该消息及其之后的所有消息
+          this.messages = this.messages.slice(0, index);
+
+          // 如果删除后没有消息了，提示用户
+          if (this.messages.length === 0) {
+            // 可选：自动返回欢迎页或重新开始
+            // this.navigate('welcome');
+          }
+        },
+
+        // 加载所有存档槽信息
+        async loadSaveSlots() {
+          if (!this.dzmmReady) return;
+
+          for (let i = 0; i < this.saveSlots.length; i++) {
+            const slotId = this.saveSlots[i].id;
+            try {
+              const result = await window.dzmm.kv.get(`yoshiwara_save_slot_${slotId}`);
+              if (result.value) {
+                const data = JSON.parse(result.value);
+                this.saveSlots[i] = {
+                  id: slotId,
+                  empty: false,
+                  characterName: data.character.name,
+                  gender: data.character.gender,
+                  messageCount: data.messages.length,
+                  selectedModel: data.selectedModel,
+                  selectedOpening: data.selectedOpening || 'night',
+                  timestamp: data.timestamp,
+                  lastMessage: data.messages.length > 0
+                    ? data.messages[data.messages.length - 1].content.slice(0, 50) + '...'
+                    : ''
+                };
+              }
+            } catch (error) {
+              console.error(`加载存档槽 ${slotId} 失败:`, error);
+            }
+          }
+        },
+
+        // 打开存档页面（保存模式）
+        async saveGame() {
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪');
+            return;
+          }
+          await this.loadSaveSlots();
+          this.currentSaveOperation = 'save';
+          this.navigate('saves');
+        },
+
+        // 打开存档页面（读取模式）
+        async loadGame() {
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪');
+            return;
+          }
+          await this.loadSaveSlots();
+          this.currentSaveOperation = 'load';
+          this.navigate('saves');
+        },
+
+        // 保存到指定槽位
+        async saveToSlot(slotId) {
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪');
+            return;
+          }
+
+          // 检查是否会覆盖已有存档
+          const slot = this.saveSlots.find(s => s.id === slotId);
+          if (!slot.empty) {
+            if (!confirm(`存档槽 ${slotId} 已有存档，是否覆盖？`)) {
+              return;
+            }
+          }
+
+          const saveData = {
+            character: this.character,
+            messages: this.messages,
+            selectedModel: this.selectedModel,
+            selectedOpening: this.selectedOpening,
+            timestamp: new Date().toISOString()
+          };
+
+          try {
+            await window.dzmm.kv.put(`yoshiwara_save_slot_${slotId}`, JSON.stringify(saveData));
+            alert('存档成功！');
+            await this.loadSaveSlots();
+          } catch (error) {
+            console.error('存档失败：', error);
+            alert('存档失败，请重试');
+          }
+        },
+
+        // 从指定槽位加载
+        async loadFromSlot(slotId) {
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪');
+            return;
+          }
+
+          try {
+            const result = await window.dzmm.kv.get(`yoshiwara_save_slot_${slotId}`);
+
+            if (result.value) {
+              const saveData = JSON.parse(result.value);
+
+              this.character = saveData.character;
+              this.messages = saveData.messages;
+              this.selectedModel = saveData.selectedModel || 'nalang-max-0826';
+              this.selectedOpening = saveData.selectedOpening || 'night';
+              this.previousOpening = this.selectedOpening; // 同步 previousOpening
+              this.storyStarted = true;
+
+              this.navigate('story');
+              alert('读取存档成功！');
+            } else {
+              alert('没有找到存档');
+            }
+          } catch (error) {
+            console.error('读取存档失败：', error);
+            alert('读取存档失败，请重试');
+          }
+        },
+
+        // 删除指定槽位
+        async deleteSlot(slotId) {
+          if (!this.dzmmReady) {
+            alert('DZMM API 尚未就绪');
+            return;
+          }
+
+          if (!confirm(`确定要删除存档槽 ${slotId} 吗？此操作不可恢复。`)) {
+            return;
+          }
+
+          try {
+            await window.dzmm.kv.delete(`yoshiwara_save_slot_${slotId}`);
+            alert('删除成功！');
+            // 重置该槽位状态
+            const slotIndex = this.saveSlots.findIndex(s => s.id === slotId);
+            this.saveSlots[slotIndex] = { id: slotId, empty: true };
+          } catch (error) {
+            console.error('删除失败：', error);
+            alert('删除失败，请重试');
+          }
+        },
+
+        // 富文本渲染（style 属性使用单引号避免冲突）
+        renderRichText(text) {
+          if (!text) return '';
+
+          // 1. 先提取 options 块，用占位符替换
+          const optionsMap = [];
+          let result = text.replace(/<options>([\s\S]*?)<\/options>/g, function(match, optionsContent) {
+            const placeholder = '___OPTIONS_PLACEHOLDER_' + optionsMap.length + '___';
+            optionsMap.push(optionsContent);
+            return placeholder;
+          });
+
+          // 2. 处理富文本格式（星号、引号、换行）
+          result = result
+            // 星号 → 斜体灰色（移除星号标记，只保留样式）
+            .replace(/\*([^*]+)\*/g, function(match, content) {
+              return "<span style='font-style: italic; color: #666;'>" + content + "</span>";
+            })
+            // 日文引号 → 深红色（保留引号）
+            .replace(/「([^」]+)」/g, function(match, content) {
+              return "<span style='color: hsl(355, 75%, 48%); font-weight: bold;'>「" + content + "」</span>";
+            })
+            // 英文引号 → 金色（保留引号）
+            .replace(/"([^"]+)"/g, function(match, content) {
+              return "<span style='color: hsl(45, 85%, 58%); font-weight: bold;'>\"" + content + "\"</span>";
+            })
+            // 换行符
+            .replace(/\n/g, '<br>');
+
+          // 3. 最后处理 options，替换回占位符（独立气泡样式）
+          optionsMap.forEach(function(optionsContent, index) {
+            const placeholder = '___OPTIONS_PLACEHOLDER_' + index + '___';
+            const options = optionsContent.match(/<op>(.*?)<\/op>/g) || [];
+            const buttons = options.map(function(opt) {
+              const optionText = opt.replace(/<\/?op>/g, '').trim();
+              const escapedText = optionText.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+              return '<button class="quick-reply-option" data-option="' + escapedText + '" style="display: inline-block; margin: 4px; padding: 8px 16px; border: 2px solid hsl(45, 85%, 58%); background: transparent; color: hsl(45, 85%, 58%); border-radius: 20px; cursor: pointer; font-size: 0.875rem; transition: all 0.3s; white-space: normal; text-align: left;" onmouseover="this.style.background=&#39;hsl(45, 85%, 58%)&#39;; this.style.color=&#39;hsl(210, 30%, 15%)&#39;" onmouseout="this.style.background=&#39;transparent&#39;; this.style.color=&#39;hsl(45, 85%, 58%)&#39;">' + optionText + '</button>';
+            }).join('');
+            // 独立气泡：与正文分离，有独立背景和边框
+            const optionsHtml = '</div><div style="margin-top: 8px; padding: 12px; background: linear-gradient(to bottom, hsl(45, 85%, 98%), hsl(45, 85%, 95%)); border: 1px solid hsl(45, 85%, 70%); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 4px;"><div style="width: 100%; font-size: 0.75rem; color: hsl(45, 60%, 40%); margin-bottom: 4px;">私语</div>' + buttons + '</div><div style="display:none;">';
+            result = result.replace(placeholder, optionsHtml);
+          });
+
+          return result;
+        },
+
+        // 处理快速回复选项点击
+        handleQuickReply(event) {
+          const button = event.target.closest('[data-option]');
+          if (!button) return;
+
+          const optionText = button.getAttribute('data-option');
+          if (!optionText || this.isLoading) return;
+
+          // 填充到输入框并自动发送
+          this.userInput = optionText;
+          this.sendMessage();
+        },
+
+        // 时间格式化
+        formatTime(seconds) {
+          if (!seconds || isNaN(seconds)) return '0:00';
+          const mins = Math.floor(seconds / 60);
+          const secs = Math.floor(seconds % 60);
+          return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        },
+
+        // 获取职业标签
+        getOccupationLabel(value) {
+          const labels = {
+            'merchant': '商人',
+            'samurai': '武士',
+            'artist': '文人',
+            'doctor': '医师',
+            'other': '其他'
+          };
+          return labels[value] || value;
+        }
+      }));
+    });
+  </script>
+</body>
+</html>

@@ -46,17 +46,18 @@ Including:
 
 ```
 dzmm-builder/
-├── SKILL.md                      # Main skill documentation (764 lines)
+├── SKILL.md                      # Main skill documentation (780+ lines)
 ├── README.md                     # This file
 ├── .gitignore                    # Git ignore rules
 ├── assets/
-│   └── examples/                 # 6 complete working applications
+│   └── examples/                 # 7 complete working applications
 │       ├── 小红书文案.html       # Stateless generator (15KB)
 │       ├── 恋爱游戏.html         # State management game (35KB)
 │       ├── horror-story.html     # Effect system (29KB)
 │       ├── dungeon-adventure.html # Turn-based game (41KB)
 │       ├── neon-gomoku.html      # Board game (24KB)
-│       └── 贴吧.html             # Content platform (26KB)
+│       ├── 贴吧.html             # Content platform (26KB)
+│       └── yoshiwara-chronicles-dzmm.html # Complete visual novel (84KB) ⭐
 └── references/
     ├── developer-guide.md        # Complete DZMM platform documentation
     └── code-snippets.md          # Reusable code patterns library
@@ -123,14 +124,24 @@ Browse the files directly for:
 </html>
 ```
 
-### Example 2: Visual Novel with Message Management
+### Example 2: Complete Visual Novel System
 
-See `assets/examples/` for complete implementations including:
-- Rich text rendering with nested options
-- Reroll/edit/delete functionality
-- Multi-opening scene system
-- Multi-slot save/load
-- Streaming AI responses
+See `assets/examples/yoshiwara-chronicles-dzmm.html` (84KB) for the most comprehensive implementation including:
+- **Multi-opening system** - Switch between "Night Chapter" and "Day Chapter" scenes
+- **Rich text rendering** - Placeholder technique for nested options, dialogue quotes, italics
+- **Message management** - Reroll/regenerate, edit, delete with full context preservation
+- **Multi-slot save/load** - 3 save slots with character/message count preview
+- **Modular prompts** - XML-structured system (main + character + guidance + emphasis)
+- **Advanced techniques** - `<last_input>` emphasis, token optimization, streaming responses
+- **Responsive design** - Mobile-optimized navigation, compressed spacing, flex-wrap buttons
+- **Resource reuse** - GitHub Raw URLs for background images (100% visual fidelity)
+
+This is a production-ready visual novel template based on 54 commits of iterative development.
+
+Also see other examples in `assets/examples/` for specific patterns:
+- 小红书文案.html - Simple content generator
+- 恋爱游戏.html - State management game with progress bars
+- horror-story.html - Effect system with lights/sounds/particles
 
 ## 🎓 Key Patterns
 

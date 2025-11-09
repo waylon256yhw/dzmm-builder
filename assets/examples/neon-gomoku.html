@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>霓虹同层五子棋</title>
+  <style>
+    :root {
+      --bg-primary: #080920;
+      --bg-secondary: #0f1038;
+      --grid-line: rgba(0, 255, 213, 0.6);
+      --cell-empty: rgba(255, 255, 255, 0.05);
+      --glow-pink: rgba(255, 0, 154, 0.85);
+      --glow-cyan: rgba(0, 255, 213, 0.95);
+      --text-primary: #e6f6ff;
+      --text-muted: rgba(230, 246, 255, 0.7);
+      --accent: #ff007f;
+      --accent-secondary: #18f0ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 20% 20%, rgba(255, 0, 154, 0.25), transparent 45%),
+                  radial-gradient(circle at 80% 30%, rgba(0, 255, 213, 0.2), transparent 50%),
+                  linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      color: var(--text-primary);
+    }
+
+    .app-shell {
+      width: min(92vw, 900px);
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 28px;
+      padding: 36px;
+      border-radius: 28px;
+      background: rgba(11, 13, 45, 0.75);
+      backdrop-filter: blur(12px);
+      box-shadow:
+        0 0 60px rgba(0, 255, 213, 0.25),
+        0 0 120px rgba(255, 0, 154, 0.2),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-shell::before,
+    .app-shell::after {
+      content: '';
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      filter: blur(90px);
+      opacity: 0.5;
+      z-index: 0;
+      animation: pulse 9s ease-in-out infinite;
+    }
+
+    .app-shell::before {
+      top: -120px;
+      right: -60px;
+      background: var(--glow-pink);
+    }
+
+    .app-shell::after {
+      bottom: -120px;
+      left: -60px;
+      background: var(--glow-cyan);
+      animation-delay: -3s;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.9) rotate(0deg); opacity: 0.35; }
+      50% { transform: scale(1.1) rotate(8deg); opacity: 0.55; }
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(24px, 3vw, 34px);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-secondary);
+      text-shadow:
+        0 0 12px rgba(24, 240, 255, 0.7),
+        0 0 32px rgba(24, 240, 255, 0.4);
+    }
+
+    .tagline {
+      margin: 0 0 28px;
+      font-size: 14px;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .board-wrapper {
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .board {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      padding: 24px;
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(5, 6, 25, 0.85), rgba(18, 21, 62, 0.65));
+      box-shadow:
+        0 0 25px rgba(24, 240, 255, 0.25),
+        inset 0 0 25px rgba(0, 0, 0, 0.35);
+    }
+
+    .cell {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(24, 240, 255, 0.08));
+      border: 1px solid rgba(24, 240, 255, 0.2);
+      color: var(--text-primary);
+      font-size: clamp(28px, 6vw, 54px);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-shadow:
+        0 0 12px rgba(255, 255, 255, 0.55),
+        0 0 28px rgba(24, 240, 255, 0.45);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .cell:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 0, 154, 0.6);
+      box-shadow:
+        0 0 20px rgba(255, 0, 154, 0.35),
+        inset 0 0 15px rgba(24, 240, 255, 0.25);
+    }
+
+    .cell[data-player="X"] {
+      color: #18f0ff;
+      text-shadow:
+        0 0 18px rgba(24, 240, 255, 0.85),
+        0 0 32px rgba(24, 240, 255, 0.55);
+    }
+
+    .cell[data-player="O"] {
+      color: #ff55b4;
+      text-shadow:
+        0 0 18px rgba(255, 85, 180, 0.85),
+        0 0 32px rgba(255, 85, 180, 0.55);
+    }
+
+    .cell.is-disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+      filter: saturate(0.6);
+    }
+
+    .panel {
+      z-index: 1;
+      background: rgba(9, 12, 38, 0.85);
+      border-radius: 24px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow:
+        inset 0 0 18px rgba(255, 255, 255, 0.05),
+        0 0 35px rgba(255, 0, 154, 0.18);
+    }
+
+    .scoreboard, .ai-indicator {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .score {
+      flex: 1;
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(18, 21, 62, 0.85), rgba(24, 240, 255, 0.12));
+      border: 1px solid rgba(24, 240, 255, 0.35);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: center;
+      transition: transform 0.2s ease;
+    }
+
+    .score.active {
+      transform: translateY(-4px);
+      box-shadow: 0 0 22px rgba(24, 240, 255, 0.4);
+    }
+
+    .score span {
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .score strong {
+      font-size: 32px;
+      letter-spacing: 0.05em;
+    }
+
+    .round-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .status {
+      padding: 18px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 0, 154, 0.35);
+      box-shadow:
+        0 0 18px rgba(255, 0, 154, 0.3),
+        inset 0 0 18px rgba(24, 240, 255, 0.1);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .status strong {
+      color: var(--accent);
+      letter-spacing: 0.08em;
+    }
+
+    .moves {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .moves-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .moves-log {
+      max-height: 180px;
+      overflow-y: auto;
+      padding-right: 6px;
+      display: grid;
+      gap: 8px;
+      font-family: 'JetBrains Mono', 'Courier New', monospace;
+      font-size: 13px;
+    }
+
+    .move-entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(24, 240, 255, 0.15);
+      transition: background 0.2s ease;
+    }
+
+    .move-entry[data-player="X"] {
+      color: #18f0ff;
+    }
+
+    .move-entry[data-player="O"] {
+      color: #ff55b4;
+    }
+
+    .move-entry:hover {
+      background: rgba(24, 240, 255, 0.08);
+    }
+
+    .controls, .ai-indicator {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button {
+      position: relative;
+      padding: 12px 24px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 600;
+      background: linear-gradient(135deg, rgba(255, 0, 154, 0.9), rgba(24, 240, 255, 0.9));
+      color: var(--text-primary);
+      box-shadow:
+        0 0 18px rgba(255, 0, 154, 0.4),
+        0 0 25px rgba(24, 240, 255, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow:
+        0 0 28px rgba(255, 0, 154, 0.6),
+        0 0 36px rgba(24, 240, 255, 0.5);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      box-shadow: none;
+    }
+
+    @media (max-width: 960px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        padding: 28px 22px;
+        gap: 24px;
+      }
+
+      .board {
+        padding: 18px;
+        gap: 12px;
+      }
+
+      .panel {
+        padding: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" x-data="gomokuApp" class="app-shell">
+    <div class="board-wrapper">
+      <div>
+        <h1>Neon Matrix Gomoku</h1>
+        <p class="tagline">3x3 GRID · FIRST TO 3 IN LINE · CYBER ROUND BATTLE</p>
+      </div>
+
+      <div class="board" :aria-busy="aiThinking.toString()">
+        <template x-for="(cell, index) in board" :key="index">
+          <div
+            class="cell"
+            :class="{'is-disabled': !isInteractive || cell}"
+            :data-player="cell"
+            @click="handleCellClick(index)"
+            @keydown.enter.prevent="handleCellClick(index)"
+            @keydown.space.prevent="handleCellClick(index)"
+            x-text="cell"
+            :aria-label="`格子 ${coordLabel(index)}，当前状态 ${cell || '空'}`"
+            :aria-disabled="(!isInteractive || !!cell).toString()"
+            role="button"
+            tabindex="0"
+          ></div>
+        </template>
+      </div>
+      <div class="status" x-html="statusMessage"></div>
+      <div class="ai-indicator" x-show="aiThinking">
+        <button disabled style="flex:1; opacity:0.9;">Neon AI 计算中...</button>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="round-info">
+        <span>Round #<span x-text="round"></span></span>
+        <span x-text="roundOver ? '等待下一局' : (currentPlayer === 'X' ? '轮到你出手' : 'AI 正在考虑')"></span>
+      </div>
+
+      <div class="scoreboard">
+        <div class="score" :class="{'active': !roundOver && currentPlayer === 'X'}">
+          <span>Player X · 你</span>
+          <strong x-text="scores.X"></strong>
+        </div>
+        <div class="score" :class="{'active': !roundOver && currentPlayer === 'O'}">
+          <span>Player O · AI</span>
+          <strong x-text="scores.O"></strong>
+        </div>
+      </div>
+
+      <div class="moves">
+        <div class="moves-header">
+          <span>Move Log</span>
+          <span x-text="`${history.length} steps`"></span>
+        </div>
+        <div class="moves-log">
+          <template x-if="history.length === 0">
+            <span class="move-entry" style="justify-content:center; color: var(--text-muted); border-style: dashed;">
+              等待首个落子...
+            </span>
+          </template>
+          <template x-for="(move, idx) in history" :key="idx">
+            <div class="move-entry" :data-player="move.player">
+              <span x-text="`#${idx + 1}`"></span>
+              <span x-text="`${move.player} → ${move.coord}`"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button @click="startNewRound" :disabled="!roundOver">重新开始下一局</button>
+        <button @click="resetMatch" :disabled="aiThinking">清空计分板</button>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('gomokuApp', () => ({
+        board: Array(9).fill(''),
+        currentPlayer: 'X',
+        scores: { X: 0, O: 0 },
+        history: [],
+        round: 1,
+        isInteractive: true,
+        roundOver: false,
+        aiThinking: false,
+        statusMessage: '',
+        aiModel: 'nalang-max-0826',
+        debugEnabled: true,
+        promptTemplate: `
+你是一个 3x3 棋盘的霓虹风五子棋（连三）选手，执 O（后手）。
+任务目标：
+1. 任何时候发现 X 已经形成两子连线，只差一格获胜时，优先抢先堵住该格。
+2. 在确保阻止 X 获胜后，尝试创造自己的双子机会，或直接完成三连。
+3. 永远只选择棋盘上的空位，不允许重复落子。
+
+策略提示：
+- 先防守：若存在 X 的潜在三连（两子在同一线 + 一个空位），立即占据这个空位。
+- 再进攻：若自己有两子连线可以达成三连，优先落子完成三连。
+- 若同时有多个选择，按防守 > 成三连 > 创造双子的优先级选取。
+
+示例指导（仅供参考）：
+示例1：棋盘状态
+A 行：X-X-. → 你的选择：A-3（直接堵住 X）
+示例2：棋盘状态
+中列：X-O-. → 你的选择：C-2（阻止 X 同时准备自己连线）
+示例3：棋盘状态
+对角线：O-.-X → 你的选择：B-2（布局成自己的双子，对角防守）
+
+当前棋盘（A-C 表示行，1-3 表示列，"." 代表空位）：
+{BOARD_STATE}
+
+历史落子（按顺序列出，最新在末尾）：
+{MOVE_LOG}
+
+规则提示：
+1. 3x3 棋盘，先连成横/竖/斜三个者胜。
+2. 仅允许从剩余空位中选择一个坐标。
+3. 输出必须严格遵循 JSON 格式，方便程序解析。
+
+输出格式务必严格遵守：
+###MOVE
+{"coord":"行列坐标，例如 A-1"}
+###END
+
+不要添加其他说明或多余文本。`,
+
+        async init() {
+          await this.preparePlatform();
+          this.startNewMatch();
+          this.logBanner('Neon Gomoku Initialized');
+        },
+
+        async preparePlatform() {
+          // 等待 DZMM 平台就绪，若在本地预览则 1 秒后自动继续
+          await new Promise((resolve) => {
+            let resolved = false;
+            const timer = setTimeout(() => {
+              if (!resolved) {
+                resolved = true;
+                resolve();
+              }
+            }, 1000);
+
+            const handler = (event) => {
+              if (event.data?.type === 'dzmm:ready') {
+                clearTimeout(timer);
+                resolved = true;
+                window.removeEventListener('message', handler);
+                resolve();
+              }
+            };
+
+            window.addEventListener('message', handler);
+          });
+        },
+
+        startNewMatch() {
+          this.board = Array(9).fill('');
+          this.history = [];
+          this.currentPlayer = 'X';
+          this.isInteractive = true;
+          this.roundOver = false;
+          this.aiThinking = false;
+          this.statusMessage = this.buildStatusMessage(`回合 ${this.round}：<strong>X</strong> 率先出手。`);
+          this.logBanner(`Round ${this.round} Started`);
+          this.logKeyValue('Scores', { ...this.scores });
+        },
+
+        async handleCellClick(index) {
+          if (!this.isInteractive || this.currentPlayer !== 'X' || this.board[index]) return;
+
+          this.board.splice(index, 1, this.currentPlayer);
+          const coord = this.coordLabel(index);
+          this.history.push({ player: this.currentPlayer, coord });
+          this.statusMessage = this.buildStatusMessage(`落子：<strong>${this.currentPlayer}</strong> → <strong>${coord}</strong>`);
+          this.logBanner('Player Move');
+          this.logKeyValue('Player', this.currentPlayer);
+          this.logKeyValue('Coordinate', coord);
+          this.logBlock('Board After Player Move', this.renderBoardState());
+
+          if (this.isWinningMove(this.currentPlayer)) {
+            this.finishRound(`${this.currentPlayer} 达成三连线！`, this.currentPlayer);
+            return;
+          }
+
+          if (this.board.every(cell => cell !== '')) {
+            this.finishRound('棋盘已满，本局平局。');
+            return;
+          }
+
+          await this.startAiTurn();
+        },
+
+        async startAiTurn() {
+          this.currentPlayer = 'O';
+          this.isInteractive = false;
+          this.aiThinking = true;
+          this.statusMessage = this.buildStatusMessage('Neon AI 正在分析局势...');
+          this.logBanner('AI Turn Begin');
+          this.logBlock('Board Snapshot', this.renderBoardState());
+          this.logBlock('History Snapshot', this.renderHistory());
+
+          if (!window.dzmm || typeof window.dzmm.completions !== 'function') {
+            console.warn('window.dzmm.completions 不可用，使用本地兜底策略。');
+            this.handleAiError('AI 服务不可用，使用本地兜底落子。');
+            return;
+          }
+
+          const prompt = this.renderPrompt();
+          let completion = '';
+          this.logBlock('Prompt Payload', prompt);
+
+          try {
+            await window.dzmm.completions(
+              {
+                model: this.aiModel,
+                messages: this.composeMessages(prompt),
+                maxTokens: 320,
+                temperature: 0.4
+              },
+              (newContent, done) => {
+                completion = newContent;
+                if (done) {
+                  this.statusMessage = this.buildStatusMessage('Neon AI 已锁定坐标，准备落子。');
+                  this.logBlock('AI Raw Completion', completion);
+                }
+              }
+            );
+          } catch (error) {
+            console.error('AI 调用失败:', error);
+            this.handleAiError('AI 接口调用失败，已为你随机落子。');
+            return;
+          }
+
+          const aiCoord = this.extractMoveFromCompletion(completion);
+          let targetIndex = aiCoord !== null ? this.coordToIndex(aiCoord) : null;
+          this.logKeyValue('Parsed AI Coordinate', aiCoord);
+          this.logKeyValue('Target Index', targetIndex);
+
+          if (targetIndex === null || this.board[targetIndex]) {
+            console.warn('AI 输出无效或位置被占，用兜底策略。', completion);
+            this.handleAiError('AI 输出无效，使用兜底落子。');
+            return;
+          }
+
+          this.applyAiMove(targetIndex);
+        },
+
+        isWinningMove(player) {
+          const lines = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6],
+          ];
+
+          return lines.some(pattern =>
+            pattern.every(index => this.board[index] === player)
+          );
+        },
+
+        finishRound(message, winner = null) {
+          this.isInteractive = false;
+          this.aiThinking = false;
+          this.roundOver = true;
+          if (winner) {
+            this.scores[winner] += 1;
+            this.scores = { ...this.scores };
+            this.statusMessage = this.buildStatusMessage(`${message} <br />比分更新：<strong>X</strong> ${this.scores.X} : ${this.scores.O} <strong>O</strong>`);
+          } else {
+            this.statusMessage = this.buildStatusMessage(`${message} <br />比分维持：<strong>X</strong> ${this.scores.X} : ${this.scores.O} <strong>O</strong>`);
+          }
+          this.logBanner('Round Finished');
+          this.logKeyValue('Winner', winner || 'Draw');
+          this.logKeyValue('Scores', { ...this.scores });
+        },
+
+        startNewRound() {
+          if (!this.roundOver) return;
+          this.round += 1;
+          this.startNewMatch();
+        },
+
+        resetMatch() {
+          this.scores = { X: 0, O: 0 };
+          this.round = 1;
+          this.startNewMatch();
+        },
+
+        applyAiMove(index, options = {}) {
+          const coord = this.coordLabel(index);
+          const prefix = options.prefix ? `${options.prefix}<br />` : '';
+          const baseMessage = `${prefix}AI 落子：<strong>O</strong> → <strong>${coord}</strong>`;
+          this.board.splice(index, 1, 'O');
+          this.history.push({ player: 'O', coord });
+
+          if (this.isWinningMove('O')) {
+            this.finishRound(`${baseMessage}<br />O 达成三连线，Neon AI 获胜！`, 'O');
+            this.logBanner('AI Victory');
+            return;
+          }
+
+          if (this.board.every(cell => cell !== '')) {
+            this.finishRound(`${baseMessage}<br />棋盘已满，本局平局。`);
+            this.logBanner('Round Draw');
+            return;
+          }
+
+          this.currentPlayer = 'X';
+          this.isInteractive = true;
+          this.aiThinking = false;
+          this.statusMessage = this.buildStatusMessage(`${baseMessage}<br />轮到 <strong>X</strong> 思考下一步。`);
+          this.logBanner('Turn Back To Player');
+          this.logBlock('Board After AI Move', this.renderBoardState());
+        },
+
+        handleAiError(message) {
+          const fallbackIndex = this.findFallbackCell();
+          if (fallbackIndex === null) {
+            this.finishRound('棋盘状态异常，无法继续。');
+            return;
+          }
+          this.logBanner('AI Error Fallback');
+          this.logKeyValue('Fallback Message', message);
+          this.logKeyValue('Fallback Index', fallbackIndex);
+          this.applyAiMove(fallbackIndex, { prefix: message });
+        },
+
+        findFallbackCell() {
+          const idx = this.board.findIndex(cell => cell === '');
+          return idx === -1 ? null : idx;
+        },
+
+        coordLabel(index) {
+          const row = Math.floor(index / 3);
+          const col = index % 3;
+          const rows = ['A', 'B', 'C'];
+          const cols = ['1', '2', '3'];
+          return `${rows[row]}-${cols[col]}`;
+        },
+
+        coordToIndex(coord) {
+          if (!coord) return null;
+          const normalized = coord.trim().toUpperCase();
+          const [row, col] = normalized.split(/[-\s]/);
+          const rowIndex = ['A', 'B', 'C'].indexOf(row);
+          const colIndex = ['1', '2', '3'].indexOf(col);
+          if (rowIndex === -1 || colIndex === -1) return null;
+          return rowIndex * 3 + colIndex;
+        },
+
+        extractMoveFromCompletion(text) {
+          if (!text) return null;
+          const match = text.match(/###MOVE\s*({[\s\S]*?})\s*###END/i);
+          if (!match) return null;
+          this.logBlock('Matched Move Payload', match[1]);
+          try {
+            const payload = JSON.parse(match[1]);
+            this.logKeyValue('Parsed Payload', payload);
+            return payload.coord || null;
+          } catch (error) {
+            console.error('解析 AI 输出失败:', error);
+            return null;
+          }
+        },
+
+        renderPrompt() {
+          const boardBlock = this.renderBoardState();
+          const historyBlock = this.renderHistory();
+          return (this.promptTemplate || '')
+            .replace('{BOARD_STATE}', boardBlock)
+            .replace('{MOVE_LOG}', historyBlock);
+        },
+
+        composeMessages(prompt) {
+          const trimmed = prompt.trim();
+          return [
+            {
+              role: 'user',
+              content: trimmed
+            }
+          ];
+        },
+
+        renderBoardState() {
+          const rows = ['A', 'B', 'C'];
+          const cols = ['1', '2', '3'];
+          return rows.map((rowLabel, rowIndex) => {
+            const rowCells = cols.map((colLabel, colIndex) => {
+              const value = this.board[rowIndex * 3 + colIndex] || '.';
+              return `${rowLabel}-${colLabel}:${value}`;
+            });
+            return rowCells.join(' | ');
+          }).join('\n');
+        },
+
+        renderHistory() {
+          if (this.history.length === 0) return '无';
+          return this.history.map((move, idx) => `#${idx + 1} ${move.player} ${move.coord}`).join(' ; ');
+        },
+
+        buildStatusMessage(content) {
+          const timestamp = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+          return `<span style="color: var(--text-muted); font-size: 12px; letter-spacing: 0.18em;">${timestamp}</span><br />${content}`;
+        },
+
+        logBanner(text) {
+          if (!this.debugEnabled) return;
+          console.log(`===== ${text} =====`);
+        },
+
+        logKeyValue(label, value) {
+          if (!this.debugEnabled) return;
+          console.log(`[DEBUG] ${label}:`, value);
+        },
+
+        logBlock(label, content) {
+          if (!this.debugEnabled) return;
+          console.log(`--- ${label} START ---`);
+          console.log(content);
+          console.log(`--- ${label} END ---`);
+        }
+      }));
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

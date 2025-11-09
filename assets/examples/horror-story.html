@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>深夜来客 - 恐怖互动故事</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      overflow-x: hidden;
+      transition: filter 0.5s, background-color 0.5s;
+      position: relative;
+    }
+
+    /* 噪点背景 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 1;
+      animation: scanlines 8s linear infinite;
+    }
+
+    @keyframes scanlines {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(20px); }
+    }
+
+    /* 光线状态 */
+    body.lights-normal {
+      background: #1a1a1a;
+      filter: brightness(1);
+    }
+
+    body.lights-dim {
+      background: #0a0a0a;
+      filter: brightness(0.6);
+    }
+
+    body.lights-off {
+      background: #000000;
+      filter: brightness(0.2);
+    }
+
+    body.lights-flicker {
+      animation: flicker 0.15s ease-in-out 5;
+    }
+
+    @keyframes flicker {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(0.3); }
+    }
+
+    /* 抖动效果 */
+    body.shake-low {
+      animation: shake-low 0.3s;
+    }
+
+    body.shake-medium {
+      animation: shake-medium 0.5s;
+    }
+
+    body.shake-high {
+      animation: shake-high 0.8s;
+    }
+
+    @keyframes shake-low {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-3px, 3px); }
+      75% { transform: translate(3px, -3px); }
+    }
+
+    @keyframes shake-medium {
+      0%, 100% { transform: translate(0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-5px, 5px) rotate(0.5deg); }
+      20%, 40%, 60%, 80% { transform: translate(5px, -5px) rotate(-0.5deg); }
+    }
+
+    @keyframes shake-high {
+      0%, 100% { transform: translate(0, 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(-10px, 10px) rotate(1deg); }
+      20%, 40%, 60%, 80% { transform: translate(10px, -10px) rotate(-1deg); }
+    }
+
+    /* 故障效果 */
+    body.glitch {
+      animation: glitch 0.3s infinite;
+    }
+
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); filter: hue-rotate(0deg); }
+      40% { transform: translate(-2px, -2px); filter: hue-rotate(90deg); }
+      60% { transform: translate(2px, 2px); filter: hue-rotate(180deg); }
+      80% { transform: translate(2px, -2px); filter: hue-rotate(270deg); }
+      100% { transform: translate(0); filter: hue-rotate(360deg); }
+    }
+
+    /* 滤镜效果 */
+    body.filter-blood {
+      background: linear-gradient(180deg,
+        rgba(139, 0, 0, 0.3) 0%,
+        rgba(0, 0, 0, 0) 50%,
+        rgba(139, 0, 0, 0.3) 100%
+      ), #0a0a0a;
+    }
+
+    body.filter-blur {
+      filter: blur(2px);
+    }
+
+    /* 画布 */
+    #particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* 主容器 */
+    #app {
+      position: relative;
+      z-index: 3;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    /* 标题 */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      animation: fadeIn 2s ease-in;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      color: #8b0000;
+      text-shadow: 0 0 10px rgba(139, 0, 0, 0.5),
+                   0 0 20px rgba(139, 0, 0, 0.3);
+      margin-bottom: 10px;
+      letter-spacing: 4px;
+    }
+
+    .header .subtitle {
+      font-size: 14px;
+      color: #666;
+      letter-spacing: 2px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* 警告框 */
+    .warning {
+      background: rgba(139, 0, 0, 0.1);
+      border: 1px solid #8b0000;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .warning h3 {
+      color: #ff4444;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .warning p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #ccc;
+      margin-bottom: 15px;
+    }
+
+    .warning button {
+      background: #8b0000;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      transition: background 0.3s;
+    }
+
+    .warning button:hover {
+      background: #a00000;
+    }
+
+    /* 对话区 */
+    .chat-container {
+      background: rgba(20, 20, 20, 0.8);
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      min-height: 400px;
+      max-height: 600px;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .chat-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-container::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+
+    .chat-container::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 4px;
+    }
+
+    .message {
+      margin-bottom: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      line-height: 1.8;
+      animation: messageSlide 0.3s ease-out;
+    }
+
+    @keyframes messageSlide {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      background: rgba(30, 30, 60, 0.6);
+      border-left: 3px solid #4a4a8a;
+      margin-left: 40px;
+    }
+
+    .message.assistant {
+      background: rgba(40, 20, 20, 0.6);
+      border-left: 3px solid #8b0000;
+      margin-right: 40px;
+    }
+
+    .message .role {
+      display: block;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .message.assistant .role {
+      color: #ff6666;
+    }
+
+    .message .content {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .typing-indicator {
+      display: inline-block;
+      padding: 15px;
+      background: rgba(40, 20, 20, 0.6);
+      border-left: 3px solid #8b0000;
+      border-radius: 8px;
+      margin-right: 40px;
+    }
+
+    .typing-indicator span {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #8b0000;
+      margin: 0 2px;
+      animation: typing 1.4s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing-indicator span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes typing {
+      0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+      30% { opacity: 1; transform: translateY(-10px); }
+    }
+
+    /* 输入区 */
+    .input-area {
+      display: flex;
+      gap: 10px;
+      background: rgba(20, 20, 20, 0.8);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+    }
+
+    .input-area input {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 12px 15px;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    .input-area input:focus {
+      outline: none;
+      border-color: #8b0000;
+    }
+
+    .input-area input::placeholder {
+      color: #666;
+    }
+
+    .input-area button {
+      background: #8b0000;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      transition: background 0.3s;
+      white-space: nowrap;
+    }
+
+    .input-area button:hover:not(:disabled) {
+      background: #a00000;
+    }
+
+    .input-area button:disabled {
+      background: #444;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    /* 控制面板 */
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .controls button {
+      background: rgba(40, 40, 40, 0.8);
+      color: #999;
+      border: 1px solid #444;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      transition: all 0.3s;
+    }
+
+    .controls button:hover {
+      background: rgba(60, 60, 60, 0.8);
+      color: #ccc;
+      border-color: #666;
+    }
+
+    /* 惊吓弹出 */
+    .jumpscare {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      background: rgba(0, 0, 0, 0.95);
+      color: #ff0000;
+      font-size: 48px;
+      font-weight: bold;
+      padding: 40px 60px;
+      border: 3px solid #ff0000;
+      border-radius: 12px;
+      z-index: 9999;
+      text-align: center;
+      text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+      animation: jumpscare 0.5s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes jumpscare {
+      0% {
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+        opacity: 0;
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.2) rotate(5deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+      }
+    }
+
+    /* 响应式 */
+    @media (max-width: 600px) {
+      .header h1 {
+        font-size: 28px;
+      }
+
+      .message.user {
+        margin-left: 20px;
+      }
+
+      .message.assistant {
+        margin-right: 20px;
+      }
+
+      .jumpscare {
+        font-size: 32px;
+        padding: 30px 40px;
+      }
+    }
+  </style>
+</head>
+<body class="lights-dim">
+  <canvas id="particle-canvas"></canvas>
+
+  <div id="app" x-data="horrorApp">
+    <!-- 警告页面 -->
+    <div x-show="!started" class="warning">
+      <h3>⚠️ 警告 ⚠️</h3>
+      <p>本应用包含恐怖/悬疑内容，可能引起不适。</p>
+      <p>建议在昏暗环境下独自体验，并佩戴耳机以获得最佳效果。</p>
+      <p>AI 将在故事讲述过程中控制页面的视觉和音效，营造沉浸式体验。</p>
+      <p style="margin-top: 15px; color: #ff6666;">
+        <strong>如有心脏疾病或对惊吓内容敏感，请勿继续。</strong>
+      </p>
+      <button @click="startExperience">我已准备好进入</button>
+    </div>
+
+    <!-- 主界面 -->
+    <div x-show="started" style="display: none;">
+      <div class="header">
+        <h1>深夜来客</h1>
+        <p class="subtitle">AI 驱动的恐怖互动故事</p>
+      </div>
+
+      <div class="chat-container" x-ref="chatContainer">
+        <template x-for="msg in messages" :key="msg.id">
+          <div :class="'message ' + msg.role">
+            <span class="role" x-text="msg.role === 'user' ? '你' : '叙事者'"></span>
+            <div class="content" x-text="msg.content"></div>
+          </div>
+        </template>
+
+        <div x-show="loading" class="typing-indicator">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <input
+          x-model="userInput"
+          @keydown.enter="sendMessage"
+          placeholder="输入你的行动或指令..."
+          :disabled="loading"
+          type="text">
+        <button @click="sendMessage" :disabled="loading || !userInput.trim()">
+          发送
+        </button>
+      </div>
+
+      <div class="controls">
+        <button @click="resetStory">🔄 重新开始</button>
+        <button @click="testEffects">🎬 测试效果</button>
+        <button @click="toggleSafeMode">
+          <span x-text="safeMode ? '🔊 开启效果' : '🔇 安全模式'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== 粒子系统 ====================
+    class ParticleSystem {
+      constructor() {
+        this.canvas = document.getElementById('particle-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.particles = [];
+        this.animating = false;
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+
+        // 启动环境粒子（灰尘）
+        this.startAmbientParticles();
+      }
+
+      resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+      }
+
+      startAmbientParticles() {
+        // 创建 20 个漂浮的灰尘粒子
+        for (let i = 0; i < 20; i++) {
+          this.particles.push({
+            x: Math.random() * this.canvas.width,
+            y: Math.random() * this.canvas.height,
+            vx: (Math.random() - 0.5) * 0.3,
+            vy: Math.random() * 0.2 - 0.4,
+            size: Math.random() * 2 + 1,
+            life: Infinity,
+            color: `rgba(200, 200, 200, ${Math.random() * 0.3})`,
+            type: 'ambient'
+          });
+        }
+        if (!this.animating) this.animate();
+      }
+
+      bloodSplatter(x, y) {
+        for (let i = 0; i < 50; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 8 + 2;
+          this.particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 3,
+            size: Math.random() * 4 + 2,
+            life: 1.0,
+            color: `rgba(139, 0, 0, ${Math.random() * 0.5 + 0.5})`,
+            type: 'blood'
+          });
+        }
+        if (!this.animating) this.animate();
+      }
+
+      animate() {
+        this.animating = true;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.particles = this.particles.filter(p => {
+          // 更新位置
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.type === 'ambient') {
+            // 环境粒子循环
+            if (p.x < 0) p.x = this.canvas.width;
+            if (p.x > this.canvas.width) p.x = 0;
+            if (p.y < 0) p.y = this.canvas.height;
+            if (p.y > this.canvas.height) p.y = 0;
+          } else {
+            // 血液粒子受重力影响
+            p.vy += 0.3;
+            p.life -= 0.015;
+          }
+
+          // 绘制
+          if (p.life > 0) {
+            this.ctx.globalAlpha = p.type === 'ambient' ? 1 : p.life;
+            this.ctx.fillStyle = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fill();
+            return true;
+          }
+          return p.type === 'ambient';
+        });
+
+        if (this.particles.length > 0) {
+          requestAnimationFrame(() => this.animate());
+        } else {
+          this.animating = false;
+        }
+      }
+    }
+
+    // ==================== 音效系统 ====================
+    class HorrorSoundSystem {
+      constructor() {
+        this.ctx = null;
+        this.currentSounds = [];
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+
+      // 低频嗡鸣（恐怖氛围）
+      drone(duration = 3000, volume = 0.2) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + duration / 1000);
+
+        gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration / 1000);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration / 1000);
+
+        this.currentSounds.push(osc);
+      }
+
+      // 心跳音
+      heartbeat(count = 3, volume = 0.3) {
+        this.init();
+        for (let i = 0; i < count; i++) {
+          setTimeout(() => {
+            // 第一下
+            this.beep(80, 100, volume);
+            // 第二下
+            setTimeout(() => this.beep(60, 150, volume * 0.7), 150);
+          }, i * 1000);
+        }
+      }
+
+      // 尖叫/尖锐音
+      scream(duration = 500, volume = 0.2) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(2000, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + duration / 1000);
+
+        gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration / 1000);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration / 1000);
+
+        this.currentSounds.push(osc);
+      }
+
+      // 基础音效
+      beep(freq, duration, volume = 0.3) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration / 1000);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration / 1000);
+      }
+
+      // 白噪音（紧张感）
+      whiteNoise(duration = 1000, volume = 0.1) {
+        this.init();
+        const bufferSize = this.ctx.sampleRate * duration / 1000;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const source = this.ctx.createBufferSource();
+        const gain = this.ctx.createGain();
+
+        source.buffer = buffer;
+        gain.gain.value = volume;
+
+        source.connect(gain);
+        gain.connect(this.ctx.destination);
+        source.start();
+
+        this.currentSounds.push(source);
+      }
+
+      stopAll() {
+        this.currentSounds.forEach(sound => {
+          try {
+            sound.stop();
+          } catch (e) {
+            // 忽略已停止的声音
+          }
+        });
+        this.currentSounds = [];
+      }
+    }
+
+    // 初始化全局系统
+    const particles = new ParticleSystem();
+    const sounds = new HorrorSoundSystem();
+
+    // ==================== 效果执行器 ====================
+    function executeEffect(effect, safeMode = false) {
+      if (safeMode && ['sound', 'jumpscare'].includes(effect.action)) {
+        console.log('[安全模式] 跳过效果:', effect.action);
+        return;
+      }
+
+      console.log('[执行效果]', effect);
+
+      const body = document.body;
+
+      switch (effect.action) {
+        case 'lights':
+          // 移除所有光线类
+          body.classList.remove('lights-normal', 'lights-dim', 'lights-off', 'lights-flicker');
+
+          if (effect.params.state === 'flicker') {
+            body.classList.add('lights-flicker');
+            setTimeout(() => body.classList.remove('lights-flicker'), 800);
+          } else {
+            body.classList.add(`lights-${effect.params.state}`);
+          }
+          break;
+
+        case 'shake':
+          const intensity = effect.params.intensity || 'medium';
+          body.classList.add(`shake-${intensity}`);
+          setTimeout(() => {
+            body.classList.remove(`shake-${intensity}`);
+          }, effect.params.duration || 500);
+          break;
+
+        case 'glitch':
+          body.classList.add('glitch');
+          setTimeout(() => {
+            body.classList.remove('glitch');
+          }, effect.params.duration || 1000);
+          break;
+
+        case 'filter':
+          body.classList.remove('filter-blood', 'filter-blur');
+          if (effect.params.type) {
+            body.classList.add(`filter-${effect.params.type}`);
+            if (effect.params.duration) {
+              setTimeout(() => {
+                body.classList.remove(`filter-${effect.params.type}`);
+              }, effect.params.duration);
+            }
+          }
+          break;
+
+        case 'sound':
+          const soundType = effect.params.type || 'beep';
+          const volume = effect.params.volume || 0.3;
+
+          switch (soundType) {
+            case 'drone':
+              sounds.drone(effect.params.duration || 3000, volume);
+              break;
+            case 'heartbeat':
+              sounds.heartbeat(effect.params.count || 3, volume);
+              break;
+            case 'scream':
+              sounds.scream(effect.params.duration || 500, volume);
+              break;
+            case 'noise':
+              sounds.whiteNoise(effect.params.duration || 1000, volume);
+              break;
+            default:
+              sounds.beep(effect.params.frequency || 440, effect.params.duration || 200, volume);
+          }
+          break;
+
+        case 'jumpscare':
+          const div = document.createElement('div');
+          div.className = 'jumpscare';
+          div.textContent = effect.params.text || '!!!';
+          document.body.appendChild(div);
+
+          sounds.scream(300, 0.3);
+
+          setTimeout(() => {
+            div.style.animation = 'none';
+            div.style.opacity = '0';
+            setTimeout(() => div.remove(), 300);
+          }, effect.params.duration || 1500);
+          break;
+
+        case 'blood':
+          const x = effect.params.x || window.innerWidth / 2;
+          const y = effect.params.y || window.innerHeight / 2;
+          particles.bloodSplatter(x, y);
+          break;
+      }
+    }
+
+    // ==================== Alpine.js 应用 ====================
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('horrorApp', () => ({
+        started: false,
+        messages: [],
+        userInput: '',
+        loading: false,
+        safeMode: false,
+        conversationHistory: [],
+
+        async init() {
+          // 等待 DZMM API 就绪
+          await new Promise((resolve) => {
+            const handler = (event) => {
+              if (event.data?.type === 'dzmm:ready') {
+                window.removeEventListener('message', handler);
+                resolve();
+              }
+            };
+            window.addEventListener('message', handler);
+          });
+        },
+
+        startExperience() {
+          this.started = true;
+
+          // 初始化音效上下文（需要用户交互）
+          sounds.init();
+
+          // 添加开场消息
+          this.messages.push({
+            id: Date.now(),
+            role: 'assistant',
+            content: '深夜，你独自在家。窗外的风吹得树枝沙沙作响。\n\n突然，你听到了一声轻微的敲门声...\n\n你打算怎么做？'
+          });
+
+          // 设置初始氛围
+          executeEffect({ action: 'lights', params: { state: 'dim' } });
+          setTimeout(() => {
+            executeEffect({ action: 'sound', params: { type: 'drone', duration: 5000, volume: 0.15 } });
+          }, 1000);
+
+          this.$nextTick(() => this.scrollToBottom());
+        },
+
+        async sendMessage() {
+          if (!this.userInput.trim() || this.loading) return;
+
+          const input = this.userInput.trim();
+          this.userInput = '';
+
+          // 添加用户消息
+          this.messages.push({
+            id: Date.now(),
+            role: 'user',
+            content: input
+          });
+
+          this.conversationHistory.push({
+            role: 'user',
+            content: input
+          });
+
+          this.loading = true;
+          this.scrollToBottom();
+
+          let response = '';
+
+          // 构建系统提示词
+          const systemPrompt = `你是一个专业的恐怖故事叙事者。你正在主持一个交互式恐怖体验，同时你拥有控制用户浏览器界面的能力。
+
+你可以使用以下特殊指令来营造恐怖氛围：
+
+###EFFECT
+{"action":"lights","params":{"state":"normal|dim|off|flicker"}}
+{"action":"shake","params":{"intensity":"low|medium|high","duration":500}}
+{"action":"glitch","params":{"duration":1000}}
+{"action":"filter","params":{"type":"blood|blur","duration":3000}}
+{"action":"sound","params":{"type":"drone|heartbeat|scream|noise","volume":0.3,"duration":3000}}
+{"action":"jumpscare","params":{"text":"惊吓文本","duration":1500}}
+{"action":"blood","params":{"x":400,"y":300}}
+###END
+
+重要规则：
+1. 在适当的恐怖时刻自然地使用这些效果，但不要过度使用
+2. 当用户明确要求某个效果时（如"关灯"、"开灯"），立即执行
+3. 讲述生动的恐怖故事，结合视觉和音效营造沉浸感
+4. 故事应该有悬念、转折和高潮
+5. 每次回应 100-200 字左右，保持节奏紧凑
+6. 根据用户的选择推进剧情
+
+当前场景：深夜的房间，用户刚听到敲门声。根据用户的行动继续故事。`;
+
+          const messages = [
+            { role: 'user', content: systemPrompt }
+          ];
+
+          // 添加历史对话（保留最近 10 条）
+          this.conversationHistory.slice(-10).forEach(msg => {
+            messages.push({
+              role: msg.role,
+              content: msg.content
+            });
+          });
+
+          try {
+            await window.dzmm.completions(
+              {
+                model: 'nalang-max-0826',
+                messages: messages,
+                maxTokens: 1000
+              },
+              (newContent, done) => {
+                response = newContent;
+
+                if (done) {
+                  // 提取并执行效果
+                  const effectMatches = [...response.matchAll(/###EFFECT\s*({[\s\S]*?})\s*###END/g)];
+
+                  if (effectMatches.length > 0) {
+                    effectMatches.forEach(match => {
+                      try {
+                        const effect = JSON.parse(match[1]);
+                        setTimeout(() => {
+                          executeEffect(effect, this.safeMode);
+                        }, 500);
+                      } catch (e) {
+                        console.error('[解析效果失败]', e, match[1]);
+                      }
+                    });
+
+                    // 从显示内容中移除所有效果指令
+                    response = response.replace(/###EFFECT[\s\S]*?###END/g, '').trim();
+                  }
+
+                  // 添加 AI 消息
+                  this.messages.push({
+                    id: Date.now() + 1,
+                    role: 'assistant',
+                    content: response
+                  });
+
+                  this.conversationHistory.push({
+                    role: 'assistant',
+                    content: response
+                  });
+
+                  this.loading = false;
+                  this.scrollToBottom();
+                }
+              }
+            );
+          } catch (error) {
+            console.error('[AI 调用失败]', error);
+            this.messages.push({
+              id: Date.now() + 1,
+              role: 'assistant',
+              content: '[系统错误：无法连接到 AI 服务，请稍后重试]'
+            });
+            this.loading = false;
+            this.scrollToBottom();
+          }
+        },
+
+        scrollToBottom() {
+          this.$nextTick(() => {
+            const container = this.$refs.chatContainer;
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          });
+        },
+
+        resetStory() {
+          if (confirm('确定要重新开始吗？')) {
+            this.messages = [];
+            this.conversationHistory = [];
+            this.userInput = '';
+            this.loading = false;
+            sounds.stopAll();
+            document.body.className = 'lights-dim';
+            this.startExperience();
+          }
+        },
+
+        testEffects() {
+          // 测试效果序列
+          executeEffect({ action: 'sound', params: { type: 'drone', duration: 2000, volume: 0.2 } });
+
+          setTimeout(() => {
+            executeEffect({ action: 'lights', params: { state: 'off' } });
+          }, 500);
+
+          setTimeout(() => {
+            executeEffect({ action: 'shake', params: { intensity: 'medium', duration: 500 } });
+            executeEffect({ action: 'sound', params: { type: 'heartbeat', count: 2, volume: 0.3 } });
+          }, 1500);
+
+          setTimeout(() => {
+            executeEffect({ action: 'glitch', params: { duration: 800 } });
+          }, 2500);
+
+          setTimeout(() => {
+            executeEffect({ action: 'lights', params: { state: 'dim' } });
+            executeEffect({ action: 'blood', params: { x: window.innerWidth / 2, y: window.innerHeight / 2 } });
+          }, 3500);
+
+          setTimeout(() => {
+            executeEffect({ action: 'jumpscare', params: { text: '测试完成!', duration: 1000 } });
+          }, 4500);
+        },
+
+        toggleSafeMode() {
+          this.safeMode = !this.safeMode;
+          if (this.safeMode) {
+            sounds.stopAll();
+          }
+        }
+      }));
+    });
+  </script>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

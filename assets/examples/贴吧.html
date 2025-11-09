@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>贴吧模拟器</title>
+<script type="text/javascript" nonce="a71d16c1a5ec4ad6b0c9724c03a" src="//injections.adguard.org?ts=1762261586344&amp;type=content-script&amp;dmn=www.dzmm.ai&amp;url=https%3A%2F%2Fwww.dzmm.ai%2Fgamefy%2Ftieba.html&amp;app=chrome.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=0"></script><script type="text/javascript" nonce="a71d16c1a5ec4ad6b0c9724c03a" src="//injections.adguard.org?ts=1762261586344&amp;name=AdGuard%20Extra&amp;name=AdGuard%20Popup%20Blocker&amp;type=user-script"></script></head>
+<body>
+  <div id="app" x-data="tiebaApp" @scroll.window="handleScroll">
+    <!-- 输入页 -->
+    <div x-show="view === 'input'" class="input-view">
+      <div class="input-container">
+        <div class="logo">
+          <div class="logo-icon">贴</div>
+          <h1>贴吧模拟器</h1>
+        </div>
+        <p class="subtitle">输入贴吧名称，AI 为你生成独特的贴吧内容</p>
+        <div class="search-box">
+          <input
+            type="text"
+            x-model="tiebaName"
+            @keyup.enter="enterTieba"
+            placeholder="输入贴吧名称，如：李毅吧、魔兽世界吧..."
+            maxlength="20"
+          />
+          <button
+            @click="enterTieba"
+            :disabled="!tiebaName.trim() || isLoading"
+            class="enter-btn"
+          >
+            <span x-show="!isLoading">进入贴吧</span>
+            <span x-show="isLoading">加载中...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 列表页 -->
+    <div x-show="view === 'list'" class="list-view">
+      <div class="header-bar">
+        <div class="container">
+          <button @click="backToInput" class="back-btn">← 返回</button>
+          <h2 class="tieba-title" x-text="$store.tieba.name + '吧'"></h2>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="post-list">
+          <template x-for="post in $store.tieba.posts" :key="post.id">
+            <div class="post-item" @click="viewPost(post.id)">
+              <div class="post-avatar" :style="'background: ' + post.avatar"></div>
+              <div class="post-content">
+                <h3 class="post-title" x-text="post.title"></h3>
+                <div class="post-meta">
+                  <span class="post-author" x-text="post.author"></span>
+                  <span class="post-time" x-text="post.timestamp"></span>
+                  <span class="post-replies" x-text="post.replyCount + ' 回复'"></span>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- 加载状态 -->
+          <div x-show="isLoading" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>正在生成新帖子...</p>
+          </div>
+
+          <!-- 空状态 -->
+          <div x-show="$store.tieba.posts.length === 0 && !isLoading" class="empty-state">
+            <p>🎉 这是一个全新的贴吧，让我们开始生成内容吧！</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 详情页 -->
+    <div x-show="view === 'detail'" class="detail-view">
+      <div class="header-bar">
+        <div class="container">
+          <button @click="backToList" class="back-btn">← 返回列表</button>
+        </div>
+      </div>
+
+      <div class="container">
+        <!-- 加载状态 -->
+        <div x-show="isLoading && !$store.tieba.currentPost" class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>正在生成帖子详情...</p>
+        </div>
+
+        <!-- 帖子详情 -->
+        <div x-show="$store.tieba.currentPost" class="post-detail">
+          <h1 class="detail-title" x-text="$store.tieba.currentPost?.title"></h1>
+
+          <!-- 楼主 -->
+          <div class="floor-item floor-main">
+            <div class="floor-header">
+              <div class="floor-avatar" :style="'background: ' + $store.tieba.currentPost?.avatar"></div>
+              <div class="floor-info">
+                <span class="floor-author" x-text="$store.tieba.currentPost?.author"></span>
+                <span class="floor-label">楼主</span>
+              </div>
+            </div>
+            <div class="floor-content" x-html="$store.tieba.currentPost?.content"></div>
+          </div>
+
+          <!-- 回复列表 -->
+          <div class="replies-section">
+            <template x-for="reply in $store.tieba.currentPost?.replies || []" :key="reply.floor">
+              <div class="floor-item">
+                <div class="floor-header">
+                  <div class="floor-avatar" :style="'background: ' + reply.avatar"></div>
+                  <div class="floor-info">
+                    <span class="floor-author" x-text="reply.author"></span>
+                    <span class="floor-number" x-text="reply.floor + '楼'"></span>
+                  </div>
+                </div>
+                <div class="floor-content" x-text="reply.content"></div>
+                <div class="floor-time" x-text="reply.timestamp"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      // 全局 Store
+      Alpine.store('tieba', {
+        name: '',
+        posts: [],
+        currentPost: null,
+        hasMore: true,
+        _initializing: false, // 防止重复初始化
+        _generatingPosts: false, // 防止重复生成帖子列表
+        _generatingDetail: false, // 防止重复生成帖子详情
+
+        async init(name) {
+          // 验证参数
+          if (!name || typeof name !== 'string' || !name.trim()) {
+            console.error('init 调用失败：无效的贴吧名称', name);
+            return;
+          }
+
+          // 防止重复调用
+          if (this._initializing) {
+            console.log('init 已在执行中，跳过重复调用');
+            return;
+          }
+
+          this._initializing = true;
+          this.name = name.trim();
+          // 清空旧数据，防止混合
+          this.posts = [];
+          this.currentPost = null;
+
+          try {
+            // 从 KV 加载 - 使用贴吧名称作为 key 的一部分（v2版本，不含preview）
+            const kvKey = `tieba_state_v2_${name}`;
+            console.log(`尝试加载贴吧: ${name}, KV key: ${kvKey}`);
+
+            const data = await window.dzmm.kv.get(kvKey);
+            console.log('KV 返回:', data);
+
+            if (data.value) {
+              const state = data.value; // 直接使用对象，不需要 JSON.parse
+              console.log(`从缓存加载 ${state.posts?.length || 0} 个帖子，贴吧名: ${state.name}`);
+              this.posts = state.posts || [];
+              return;
+            }
+
+            console.log('没有缓存，开始生成新帖子');
+            // 新贴吧，生成初始帖子
+            await this.generatePosts(10, true);
+          } finally {
+            this._initializing = false;
+          }
+        },
+
+        async generatePosts(count = 5, isInit = false) {
+          // 防止重复调用
+          if (this._generatingPosts) {
+            console.log('generatePosts 已在执行中，跳过');
+            return [];
+          }
+
+          this._generatingPosts = true;
+          console.log('开始生成帖子列表');
+
+          const prompt = `你是"${this.name}吧"的活跃用户。"${this.name}"只是这个贴吧的名称，不要做其他联想。
+
+【核心规则】
+1. "${this.name}"就是贴吧的名字，不是编程术语、不是其他含义
+2. 把"${this.name}"当作一个普通主题词，围绕它生成真实的贴吧讨论内容
+3. 标题要真实、多样化、吸引人
+4. ${isInit ? '这是新贴吧，生成第一批内容' : '避免与已有' + this.posts.length + '个帖子重复'}
+
+【示例理解】
+- 如果贴吧名是"李毅"→ 生成关于李毅这个人的讨论
+- 如果贴吧名是"猫咪"→ 生成关于猫的可爱日常
+- 如果贴吧名是"旅游"→ 生成关于旅行的经验分享
+- **不要联想编程、技术等无关概念**
+
+使用XML标签格式输出每个帖子：
+<post>
+<title>帖子标题（不超过30字）</title>
+<author>用户名</author>
+<replyCount>随机1-999的数字</replyCount>
+</post>
+
+生成${count}个符合"${this.name}"这个主题的真实贴吧帖子。`;
+
+          try {
+            let content = '';
+            await window.dzmm.completions(
+              {
+                model: 'nalang-xl',
+                messages: [{ role: 'user', content: prompt }],
+                maxTokens: 2000,
+              },
+              (newContent, done) => {
+                content = newContent;
+              }
+            );
+
+            // 输出原始返回内容用于调试
+            console.log('===== AI 返回的原始内容 =====');
+            console.log(content);
+            console.log('===== 内容结束 =====');
+
+            // 提取所有帖子（不包含 preview）
+            const postMatches = [...content.matchAll(/<post>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<author>(.*?)<\/author>[\s\S]*?<replyCount>(\d+)<\/replyCount>[\s\S]*?<\/post>/g)];
+
+            console.log(`提取到 ${postMatches.length} 个帖子`);
+
+            if (postMatches.length === 0) {
+              console.error('无法解析帖子:', content);
+              return [];
+            }
+
+            // 过滤和验证帖子数据
+            const newPosts = postMatches
+              .map(match => ({
+                title: match[1].trim(),
+                author: match[2].trim(),
+                replyCount: parseInt(match[3])
+              }))
+              .filter(post => {
+                // 验证必要字段都存在且不为空
+                const isValid = post.title &&
+                               post.author &&
+                               !isNaN(post.replyCount);
+
+                if (!isValid) {
+                  console.warn('过滤掉不完整的帖子:', post);
+                }
+                return isValid;
+              });
+
+            // 如果过滤后没有有效帖子，不保存
+            if (newPosts.length === 0) {
+              console.error('没有生成有效的帖子');
+              return [];
+            }
+
+            // 添加元数据
+            const enrichedPosts = newPosts.map(post => ({
+              id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              ...post,
+              avatar: this.generateAvatar(post.author),
+              timestamp: this.generateTimestamp(),
+              replyCount: post.replyCount || Math.floor(Math.random() * 100)
+            }));
+
+            this.posts.push(...enrichedPosts);
+            await this.saveState();
+            return enrichedPosts;
+          } catch (error) {
+            console.error('生成帖子失败:', error);
+            return [];
+          } finally {
+            this._generatingPosts = false;
+            console.log('生成帖子列表完成，释放锁');
+          }
+        },
+
+        async generatePostDetail(postId) {
+          // 防止重复调用
+          if (this._generatingDetail) {
+            console.log('generatePostDetail 已在执行中，跳过');
+            return null;
+          }
+
+          this._generatingDetail = true;
+          console.log('=== 开始生成帖子详情 ===');
+          console.log('postId:', postId);
+
+          try {
+            const post = this.posts.find(p => p.id === postId);
+            if (!post) {
+              console.error('找不到帖子:', postId);
+              return null;
+            }
+
+            console.log('找到帖子:', post);
+
+            // 检查 KV 缓存（v2版本，使用新的缓存key避免旧数据）
+            const cacheKey = `post_v2_${postId}`;
+            const cached = await window.dzmm.kv.get(cacheKey);
+            console.log('缓存检查:', cacheKey, cached);
+
+            if (cached.value) {
+              console.log('使用缓存的帖子详情');
+              return cached.value; // 直接返回对象，不需要 JSON.parse
+            }
+
+            const prompt = `展开"${this.name}吧"中的这个帖子：
+
+标题：${post.title}
+作者：${post.author}
+
+生成：
+1. 楼主完整内容（200-500字，围绕标题展开，要有真实感）
+2. 10条真实回复（有赞同、反对、搞笑、认真等不同风格）
+
+使用XML标签格式输出：
+<content>楼主的完整内容</content>
+<reply><author>用户名1</author><text>回复内容1</text></reply>
+<reply><author>用户名2</author><text>回复内容2</text></reply>
+...（共10条回复）`;
+
+            console.log('发送 prompt 到 AI');
+
+            let content = '';
+            await window.dzmm.completions(
+              {
+                model: 'nalang-xl',
+                messages: [{ role: 'user', content: prompt }],
+                maxTokens: 3000,
+              },
+              (newContent, done) => {
+                content = newContent;
+              }
+            );
+
+            console.log('===== AI 返回的帖子详情内容 =====');
+            console.log(content);
+            console.log('===== 内容结束 =====');
+
+            // 提取楼主内容
+            const contentMatch = content.match(/<content>([\s\S]*?)<\/content>/);
+            if (!contentMatch) {
+              console.error('无法解析楼主内容，原始内容:', content);
+              return null;
+            }
+
+            console.log('提取到楼主内容:', contentMatch[1]);
+
+            // 提取所有回复
+            const replyMatches = [...content.matchAll(/<reply>[\s\S]*?<author>(.*?)<\/author>[\s\S]*?<text>([\s\S]*?)<\/text>[\s\S]*?<\/reply>/g)];
+
+            console.log(`提取到 ${replyMatches.length} 条回复`);
+
+            const detail = {
+              content: contentMatch[1].trim(),
+              replies: replyMatches.map(match => ({
+                author: match[1].trim(),
+                content: match[2].trim()
+              }))
+            };
+
+            // 添加元数据
+            const enrichedDetail = {
+              id: postId,
+              title: post.title,
+              author: post.author,
+              avatar: post.avatar,
+              content: detail.content.replace(/\\n/g, '\n'),
+              replies: detail.replies.slice(0, 10).map((reply, index) => ({
+                floor: index + 1,
+                author: reply.author,
+                avatar: this.generateAvatar(reply.author),
+                content: reply.content,
+                timestamp: this.generateTimestamp()
+              }))
+            };
+
+            // 保存到 KV（使用v2 key）
+            await window.dzmm.kv.put(cacheKey, enrichedDetail);
+            return enrichedDetail;
+          } catch (error) {
+            console.error('生成帖子详情失败:', error);
+            return null;
+          } finally {
+            this._generatingDetail = false;
+            console.log('生成帖子详情完成，释放锁');
+          }
+        },
+
+        async saveState() {
+          const kvKey = `tieba_state_v2_${this.name}`;
+          await window.dzmm.kv.put(kvKey, {
+            name: this.name,
+            posts: this.posts
+          });
+        },
+
+        generateAvatar(name) {
+          const colors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A',
+            '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'
+          ];
+          const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+          return colors[hash % colors.length];
+        },
+
+        generateTimestamp() {
+          const random = Math.random();
+          if (random > 0.7) return '刚刚';
+          if (random > 0.4) return Math.floor(Math.random() * 60) + '分钟前';
+          if (random > 0.2) return Math.floor(Math.random() * 24) + '小时前';
+          return Math.floor(Math.random() * 30) + '天前';
+        }
+      });
+
+      // 主组件
+      Alpine.data('tiebaApp', () => ({
+        view: 'input',
+        tiebaName: '',
+        isLoading: false,
+        scrollThreshold: 100,
+
+        async init() {
+          await new Promise((resolve) => {
+            const handler = (event) => {
+              if (event.data?.type === 'dzmm:ready') {
+                window.removeEventListener('message', handler);
+                resolve();
+              }
+            };
+            window.addEventListener('message', handler);
+          });
+        },
+
+        async enterTieba() {
+          console.log('enterTieba 被调用，tiebaName:', this.tiebaName, 'type:', typeof this.tiebaName);
+
+          if (!this.tiebaName || typeof this.tiebaName !== 'string' || !this.tiebaName.trim()) {
+            console.error('无效的贴吧名称，停止执行', this.tiebaName);
+            return;
+          }
+
+          if (this.isLoading) {
+            console.log('正在加载中，跳过');
+            return;
+          }
+
+          const trimmedName = this.tiebaName.trim();
+          console.log('准备进入贴吧:', trimmedName);
+
+          this.isLoading = true;
+          await this.$store.tieba.init(trimmedName);
+          this.isLoading = false;
+          this.view = 'list';
+        },
+
+        async loadMore() {
+          console.log('loadMore 被调用，isLoading:', this.isLoading, 'hasMore:', this.$store.tieba.hasMore);
+
+          if (this.isLoading || !this.$store.tieba.hasMore) {
+            console.log('loadMore 被跳过');
+            return;
+          }
+
+          console.log('开始加载更多帖子');
+          this.isLoading = true;
+          await this.$store.tieba.generatePosts(5);
+          this.isLoading = false;
+        },
+
+        async viewPost(postId) {
+          // 先清空当前帖子，切换到详情页，显示 loading
+          this.$store.tieba.currentPost = null;
+          this.view = 'detail';
+          window.scrollTo(0, 0);
+
+          this.isLoading = true;
+          const detail = await this.$store.tieba.generatePostDetail(postId);
+          this.isLoading = false;
+
+          if (detail) {
+            this.$store.tieba.currentPost = detail;
+          } else {
+            // 生成失败，返回列表
+            this.backToList();
+          }
+        },
+
+        backToList() {
+          this.view = 'list';
+          this.$store.tieba.currentPost = null;
+          window.scrollTo(0, 0);
+        },
+
+        backToInput() {
+          this.view = 'input';
+          this.tiebaName = '';
+          this.$store.tieba.posts = [];
+          this.$store.tieba.name = '';
+          window.scrollTo(0, 0);
+        },
+
+        handleScroll() {
+          if (this.view !== 'list') return;
+
+          const scrollHeight = document.documentElement.scrollHeight;
+          const scrollTop = window.scrollY;
+          const clientHeight = window.innerHeight;
+
+          if (scrollHeight - scrollTop - clientHeight < this.scrollThreshold) {
+            this.loadMore();
+          }
+        }
+      }));
+    });
+  </script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* 输入页 */
+    .input-view {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .input-container {
+      text-align: center;
+      color: white;
+      padding: 40px 20px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .logo-icon {
+      width: 60px;
+      height: 60px;
+      background: white;
+      color: #3E6FBF;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .logo h1 {
+      font-size: 36px;
+      font-weight: bold;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+      margin-bottom: 40px;
+    }
+
+    .search-box {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 15px 20px;
+      border: none;
+      border-radius: 8px 8px 0 0;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .enter-btn {
+      width: 100%;
+      padding: 15px;
+      background: #3E6FBF;
+      color: white;
+      border: none;
+      border-radius: 0 0 8px 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .enter-btn:hover:not(:disabled) {
+      background: #2d5aa0;
+    }
+
+    .enter-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* 头部导航栏 */
+    .header-bar {
+      background: white;
+      border-bottom: 1px solid #e5e5e5;
+      padding: 15px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-bar .container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .back-btn {
+      padding: 8px 16px;
+      background: #f5f5f5;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+
+    .back-btn:hover {
+      background: #e5e5e5;
+    }
+
+    .tieba-title {
+      font-size: 20px;
+      color: #3E6FBF;
+      font-weight: bold;
+    }
+
+    /* 列表页 */
+    .list-view {
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    .post-list {
+      margin-top: 20px;
+    }
+
+    .post-item {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+      display: flex;
+      gap: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 1px solid #e5e5e5;
+    }
+
+    .post-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-color: #3E6FBF;
+    }
+
+    .post-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .post-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .post-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .post-preview {
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .post-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    .post-author {
+      color: #3E6FBF;
+      font-weight: 500;
+    }
+
+    /* 详情页 */
+    .detail-view {
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    .post-detail {
+      margin-top: 20px;
+    }
+
+    .detail-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+    }
+
+    .floor-item {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 1px solid #e5e5e5;
+    }
+
+    .floor-main {
+      border-left: 4px solid #3E6FBF;
+    }
+
+    .floor-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .floor-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .floor-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .floor-author {
+      font-weight: bold;
+      color: #3E6FBF;
+    }
+
+    .floor-label {
+      background: #3E6FBF;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .floor-number {
+      color: #999;
+      font-size: 14px;
+    }
+
+    .floor-content {
+      line-height: 1.8;
+      color: #333;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .floor-time {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    /* 加载状态 */
+    .loading-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3E6FBF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+      font-size: 16px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .logo h1 {
+        font-size: 28px;
+      }
+
+      .post-item {
+        padding: 15px;
+      }
+
+      .post-title {
+        font-size: 16px;
+      }
+
+      .detail-title {
+        font-size: 20px;
+        padding: 15px;
+      }
+    }
+  </style>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,380 @@
+<body>
+  <div class="container" x-data="xiaohongshu">
+    <div class="header">
+      <h1>📱 小红书文案生成器</h1>
+      <p class="subtitle">输入关键词，AI 帮你创作爆款内容</p>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="input-section">
+      <textarea x-model="userInput" placeholder="输入你想要创作的主题，比如：夏日防晒、咖啡探店、职场穿搭..." rows="3" maxlength="200"></textarea>
+      <div class="input-footer">
+        <div class="char-count" :class="{ over: userInput.length > 200 }">
+          <span x-text="userInput.length"></span> / 200
+        </div>
+        <button class="generate-btn" @click="generateContent" :disabled="isGenerating || userInput.trim().length === 0">
+          <span x-show="!isGenerating">✨ 生成内容</span>
+          <span x-show="isGenerating">生成中...</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 内容展示 -->
+    <div class="content-area" x-show="currentContent">
+      <div class="post-card" :class="{ generating: isGenerating }">
+        <div class="post-body" x-html="renderMarkdown(currentContent)"></div>
+      </div>
+    </div>
+
+    <div class="empty-state" x-show="!currentContent && !isGenerating" x-cloak>
+      <span class="empty-icon">💡</span>
+      <p>输入主题，开始创作你的小红书内容</p>
+    </div>
+  </div>
+
+  <script type="text/javascript" nonce="a71d16c1a5ec4ad6b0c9724c03a" src="//injections.adguard.org?ts=1762261586344&amp;type=content-script&amp;dmn=www.dzmm.ai&amp;url=https%3A%2F%2Fwww.dzmm.ai%2Fgamefy%2Fxiaohongshu.html&amp;app=chrome.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=0"></script><script type="text/javascript" nonce="a71d16c1a5ec4ad6b0c9724c03a" src="//injections.adguard.org?ts=1762261586344&amp;name=AdGuard%20Extra&amp;name=AdGuard%20Popup%20Blocker&amp;type=user-script"></script><script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('xiaohongshu', () => ({
+        userInput: '',
+        isGenerating: false,
+        currentContent: '',
+
+        async init() {
+          // 等待DZMM就绪
+          await new Promise((resolve) => {
+            const handler = (event) => {
+              if (event.data?.type === 'dzmm:ready') {
+                window.removeEventListener('message', handler);
+                resolve();
+              }
+            };
+            window.addEventListener('message', handler);
+          });
+        },
+
+        renderMarkdown(text) {
+          if (!window.marked || !text) return '';
+          try {
+            // 配置 marked（在使用时配置，确保 marked 已加载）
+            if (!window.marked._configured) {
+              window.marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false,
+              });
+              window.marked._configured = true;
+            }
+            return window.marked.parse(text);
+          } catch (error) {
+            return text;
+          }
+        },
+
+        createPrompt(topic) {
+          return `你是小红书内容创作专家。请根据主题"${topic}"创作一篇吸引人的小红书内容。
+
+要求：
+1. 使用markdown格式输出
+2. 标题要吸引眼球（使用emoji和数字）
+3. 内容要实用具体，有价值
+4. 适当使用emoji让内容更生动
+5. 使用分点、加粗等格式提高可读性
+6. 控制在300-500字左右
+
+直接输出内容，不要有额外的说明。`;
+        },
+
+        async generateContent() {
+          // 防止重复调用
+          if (this.isGenerating) {
+            return;
+          }
+
+          const topic = this.userInput.trim();
+
+          if (!topic || topic.length > 200) {
+            return;
+          }
+
+          this.isGenerating = true;
+          this.currentContent = '';
+
+          try {
+            await window.dzmm.completions(
+              {
+                model: 'nalang-xl-10',
+                messages: [
+                  { role: 'user', content: this.createPrompt(topic) }
+                ],
+                maxTokens: 1500,
+              },
+              (newContent, done) => {
+                this.currentContent = newContent;
+
+                if (done) {
+                  this.userInput = '';
+                  this.isGenerating = false;
+                }
+              }
+            );
+          } catch (error) {
+            console.error('生成失败:', error);
+            this.isGenerating = false;
+            this.currentContent = '';
+          }
+        }
+      }));
+    });
+  </script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+      padding: 20px;
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .subtitle {
+      font-size: 16px;
+      opacity: 0.95;
+    }
+
+    .input-section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      border: 2px solid #f0f0f0;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
+      resize: vertical;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #ff6b6b;
+    }
+
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .char-count {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .char-count.over {
+      color: #ff4757;
+    }
+
+    .generate-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .generate-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+    }
+
+    .generate-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .content-area {
+      margin-top: 20px;
+    }
+
+    .post-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .post-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .post-card.generating {
+      border: 2px solid #ff6b6b;
+      opacity: 0.95;
+    }
+
+    .generating-indicator {
+      display: inline-block;
+      animation: pulse 1.5s ease infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 0.3;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
+
+    .post-body {
+      color: #555;
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    /* Markdown styling */
+    .post-body h1,
+    .post-body h2,
+    .post-body h3 {
+      color: #333;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+
+    .post-body h1 {
+      font-size: 1.5em;
+    }
+
+    .post-body h2 {
+      font-size: 1.3em;
+    }
+
+    .post-body h3 {
+      font-size: 1.1em;
+    }
+
+    .post-body p {
+      margin: 8px 0;
+    }
+
+    .post-body ul,
+    .post-body ol {
+      margin-left: 20px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+
+    .post-body li {
+      margin: 4px 0;
+    }
+
+    .post-body strong {
+      color: #ff6b6b;
+      font-weight: 600;
+    }
+
+    .post-body code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    .post-body blockquote {
+      border-left: 3px solid #ff6b6b;
+      padding-left: 12px;
+      margin: 12px 0;
+      color: #666;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 15px;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 15px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .post-title {
+        font-size: 16px;
+      }
+
+      .post-body {
+        font-size: 14px;
+      }
+    }
+  </style>
+
+  <!-- 先加载依赖库 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- 最后加载 Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>

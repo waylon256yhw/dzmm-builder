@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>蓝焰地下城 · 像素冒险</title>
+  <style>
+    :root {
+      --ink: #091021;
+      --ink-soft: #0f1b36;
+      --ice: #e7f0ff;
+      --arcade-blue: #3aa9ff;
+      --arcade-cyan: #5cf2ff;
+      --arcade-white: #f4f8ff;
+      --accent-dark: #004b92;
+      --accent-light: #78e3ff;
+      --hp-color: #ff4d6d;
+      --stamina-color: #7cf57c;
+      --grid-visited: rgba(120, 227, 255, 0.35);
+      --grid-current: rgba(122, 188, 255, 0.75);
+      --grid-reachable: rgba(90, 198, 255, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at top, rgba(58, 169, 255, 0.15), transparent 50%),
+        radial-gradient(circle at 80% 40%, rgba(92, 242, 255, 0.12), transparent 55%),
+        linear-gradient(160deg, #050712, #091021 45%, #03050d 100%);
+      color: var(--arcade-white);
+      font-family: "Press Start 2P", "Pixelated", "VT323", "Courier New", monospace;
+      letter-spacing: 0.04em;
+      padding: 24px;
+    }
+
+    [x-cloak] {
+      display: none !important;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    .shell {
+      width: min(1180px, 100%);
+      background: linear-gradient(180deg, rgba(9, 16, 33, 0.92), rgba(5, 9, 22, 0.96));
+      border: 4px solid var(--arcade-blue);
+      box-shadow:
+        0 0 0 4px rgba(58, 169, 255, 0.25),
+        0 0 32px rgba(92, 242, 255, 0.35),
+        0 20px 60px rgba(0, 0, 0, 0.65);
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .shell::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        135deg,
+        transparent,
+        transparent 18px,
+        rgba(58, 169, 255, 0.04) 18px,
+        rgba(58, 169, 255, 0.04) 36px
+      );
+      pointer-events: none;
+    }
+
+    .menu-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 32px;
+      padding: 80px 40px;
+    }
+
+    .menu-title {
+      font-size: clamp(24px, 5vw, 38px);
+      color: var(--arcade-cyan);
+      text-shadow:
+        0 0 6px rgba(92, 242, 255, 0.6),
+        0 0 18px rgba(58, 169, 255, 0.75);
+      text-transform: uppercase;
+    }
+
+    .menu-hint {
+      max-width: 560px;
+      line-height: 1.6;
+      color: rgba(231, 239, 255, 0.82);
+    }
+
+    .pixel-button {
+      position: relative;
+      padding: 18px 32px;
+      border: 3px solid var(--arcade-blue);
+      background: linear-gradient(180deg, var(--arcade-blue), var(--accent-dark));
+      color: var(--ink);
+      font-size: 16px;
+      text-transform: uppercase;
+      box-shadow:
+        inset 0 -6px 0 rgba(0, 0, 0, 0.35),
+        0 0 14px rgba(58, 169, 255, 0.45);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .pixel-button:hover {
+      transform: translateY(-4px);
+      box-shadow:
+        inset 0 -6px 0 rgba(0, 0, 0, 0.25),
+        0 0 18px rgba(92, 242, 255, 0.55);
+    }
+
+    .pixel-button:active {
+      transform: translateY(0);
+      box-shadow:
+        inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+        0 0 10px rgba(58, 169, 255, 0.3);
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: relative;
+    }
+
+    .hud {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border: 3px solid var(--arcade-blue);
+      background: rgba(5, 11, 24, 0.9);
+      box-shadow: inset 0 0 16px rgba(58, 169, 255, 0.08);
+    }
+
+    .hud-section {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .hud-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .hud-group h2 {
+      margin: 0;
+      font-size: 13px;
+      color: var(--arcade-cyan);
+      letter-spacing: 0.1em;
+    }
+
+    .status-bar {
+      display: grid;
+      grid-template-columns: auto auto auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .status-meter {
+      width: 180px;
+      height: 16px;
+      border: 2px solid var(--arcade-blue);
+      background: rgba(0, 0, 0, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .status-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--hp-color), rgba(255, 77, 109, 0.4));
+      transition: width 0.25s ease;
+    }
+
+    .status-fill.stamina {
+      background: linear-gradient(90deg, var(--stamina-color), rgba(124, 245, 124, 0.35));
+    }
+
+    .status-label {
+      font-size: 12px;
+      color: var(--arcade-white);
+    }
+
+    .inventory {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .inventory-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 2px solid rgba(92, 242, 255, 0.35);
+      background: rgba(9, 16, 32, 0.65);
+    }
+
+    .inventory-item span {
+      font-size: 12px;
+      color: var(--arcade-white);
+    }
+
+    .board-wrap {
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      gap: 24px;
+    }
+
+    .board {
+      border: 4px solid var(--arcade-blue);
+      background: rgba(1, 7, 18, 0.85);
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .board::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 32px,
+        rgba(58, 169, 255, 0.05) 32px,
+        rgba(58, 169, 255, 0.05) 64px
+      );
+      pointer-events: none;
+    }
+
+    .grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+    }
+
+    .grid-cell {
+      width: 64px;
+      height: 64px;
+      border: 3px solid rgba(58, 169, 255, 0.2);
+      background: rgba(9, 16, 33, 0.65);
+      color: var(--arcade-white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .grid-cell:hover {
+      transform: translateY(-2px);
+    }
+
+    .grid-cell.cell-reachable {
+      background: var(--grid-reachable);
+      border-color: rgba(92, 242, 255, 0.55);
+    }
+
+    .grid-cell.cell-visited {
+      background: rgba(141, 109, 255, 0.28);
+      border-color: rgba(166, 134, 255, 0.8);
+      box-shadow:
+        inset 0 0 12px rgba(166, 134, 255, 0.35),
+        0 0 10px rgba(120, 90, 255, 0.25);
+    }
+
+    .grid-cell.cell-current {
+      background: var(--grid-current);
+      border-color: var(--arcade-cyan);
+      box-shadow:
+        0 0 10px rgba(92, 242, 255, 0.9),
+        inset 0 0 14px rgba(244, 248, 255, 0.5);
+    }
+
+    .grid-cell:disabled {
+      cursor: default;
+      filter: grayscale(0.2);
+      opacity: 0.85;
+      transform: none;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--arcade-white);
+      background: linear-gradient(135deg, var(--arcade-blue), rgba(255, 255, 255, 0.7));
+      box-shadow:
+        inset -4px -4px 0 rgba(0, 0, 0, 0.35),
+        0 0 12px rgba(244, 248, 255, 0.55);
+    }
+
+    .grid-label {
+      margin-top: 4px;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: rgba(231, 240, 255, 0.75);
+    }
+
+    .log-panel {
+      border: 4px solid var(--arcade-blue);
+      background: rgba(5, 12, 26, 0.92);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .log-panel h2 {
+      margin: 0;
+      font-size: 14px;
+      color: var(--arcade-cyan);
+      text-transform: uppercase;
+    }
+
+    .log-window {
+      flex: 1;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .log-entry {
+      border-left: 3px solid rgba(92, 242, 255, 0.45);
+      padding-left: 14px;
+    }
+
+    .log-entry h3 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: var(--arcade-white);
+    }
+
+    .log-entry p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(224, 236, 255, 0.85);
+      white-space: pre-wrap;
+    }
+
+    .log-entry small {
+      display: block;
+      margin-top: 6px;
+      font-size: 10px;
+      color: rgba(160, 199, 255, 0.65);
+      letter-spacing: 0.08em;
+    }
+
+    .loading {
+      font-size: 12px;
+      color: var(--arcade-cyan);
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      border: 3px solid rgba(58, 169, 255, 0.45);
+      background: rgba(5, 13, 28, 0.85);
+      padding: 16px 18px;
+      align-items: flex-start;
+    }
+
+    .action-options {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      max-width: 420px;
+    }
+
+    .action-option-btn {
+      padding: 10px 16px;
+      border: 2px solid rgba(120, 227, 255, 0.6);
+      background: rgba(12, 26, 48, 0.95);
+      color: var(--arcade-white);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-align: left;
+      line-height: 1.4;
+      min-width: 180px;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .action-option-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 0 12px rgba(120, 227, 255, 0.35);
+    }
+
+    .action-option-btn strong {
+      display: block;
+      font-size: 11px;
+      margin-bottom: 4px;
+      color: var(--arcade-cyan);
+    }
+
+    .action-option-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .actions button {
+      padding: 12px 18px;
+      border: 2px solid rgba(92, 242, 255, 0.55);
+      background: rgba(8, 18, 36, 0.9);
+      color: var(--arcade-white);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.12s ease, transform 0.12s ease;
+    }
+
+    .actions button:hover {
+      background: rgba(58, 169, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .actions button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .hint-text {
+      margin-left: auto;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: rgba(160, 199, 255, 0.6);
+    }
+
+    @media (max-width: 1024px) {
+      body {
+        padding: 16px;
+      }
+
+      .shell {
+        padding: 18px;
+      }
+
+      .board-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" id="app" x-data="dungeonApp" x-init="init" x-cloak>
+    <template x-if="isMenu">
+      <section class="menu-screen">
+        <h1 class="menu-title">蓝焰地下城</h1>
+        <p class="menu-hint">
+          经典 8-bit 像素街机风格的同层地下城。在每个格子里等待你的，是来自私有 AI 的创意遭遇。谨慎前进、点亮迷雾，保管好生命值与耐力条！
+        </p>
+        <button class="pixel-button" @click="startJourney" :disabled="!apiReady">
+          <span x-show="apiReady">踏入地底</span>
+          <span x-show="!apiReady">唤醒 AI 中...</span>
+        </button>
+      </section>
+    </template>
+
+    <main x-show="!isMenu">
+      <header class="hud">
+        <div class="hud-section">
+          <div class="hud-group">
+            <h2>状态栏</h2>
+            <div class="status-bar">
+              <div class="status-label">HP</div>
+              <div class="status-meter">
+                <div class="status-fill"
+                  :style="`width: ${(stats.hp / stats.maxHp) * 100}%`"></div>
+              </div>
+              <div class="status-label" x-text="`${stats.hp}/${stats.maxHp}`"></div>
+
+              <div class="status-label">耐力</div>
+              <div class="status-meter">
+                <div class="status-fill stamina"
+                  :style="`width: ${(stats.stamina / stats.maxStamina) * 100}%`"></div>
+              </div>
+              <div class="status-label" x-text="`${stats.stamina}/${stats.maxStamina}`"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-section">
+          <div class="hud-group">
+            <h2>背包</h2>
+            <div class="inventory">
+              <div class="inventory-item">
+                <span>金币</span>
+                <strong x-text="inventory.coins"></strong>
+              </div>
+              <div class="inventory-item">
+                <span>红药</span>
+                <strong x-text="inventory.redPotions"></strong>
+              </div>
+              <div class="inventory-item">
+                <span>蓝药</span>
+                <strong x-text="inventory.bluePotions"></strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="board-wrap">
+        <div class="board">
+          <div class="grid" role="grid">
+            <template x-for="row in visibleGrid()" :key="row.y">
+              <div class="grid-row" role="row" style="display: contents;">
+                <template x-for="cell in row.cells" :key="cell.key">
+                  <button
+                    class="grid-cell"
+                    :class="{
+                      'cell-current': cell.isCurrent,
+                      'cell-visited': cell.isVisited,
+                      'cell-reachable': cell.isReachable
+                    }"
+                    :title="cell.isCurrent ? '当前位置' : `(${cell.x}, ${cell.y})`"
+                    :disabled="!cell.isReachable || isLoading"
+                    @click="attemptMove(cell)"
+                  >
+                    <template x-if="cell.isCurrent">
+                      <div class="avatar"></div>
+                    </template>
+                    <template x-if="!cell.isCurrent && cell.isVisited">
+                      <span>◎</span>
+                    </template>
+                    <template x-if="!cell.isCurrent && !cell.isVisited && cell.isReachable">
+                      <span>→</span>
+                    </template>
+                    <span class="grid-label" x-text="cell.label"></span>
+                  </button>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <aside class="log-panel">
+          <h2>遭遇日志</h2>
+          <div class="log-window">
+            <template x-for="entry in encounterLog.slice().reverse()" :key="entry.id">
+              <article class="log-entry">
+                <h3 x-text="entry.title"></h3>
+                <p x-text="entry.content"></p>
+                <small x-text="entry.meta"></small>
+              </article>
+            </template>
+            <div class="loading" x-show="isLoading">生成中 · 请稍候...</div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="actions">
+        <div class="action-options" x-show="currentActions.length > 0">
+          <template x-for="action in currentActions" :key="action.id">
+            <button
+              class="action-option-btn"
+              @click="executeAction(action)"
+              :disabled="isLoading || isActionCompleted(action)"
+            >
+              <strong x-text="`${action.id}. ${action.title}`"></strong>
+              <div style="font-size: 10px; opacity: 0.75; margin-top: 6px;">
+                <div x-text="`概要：${action.summary}`"></div>
+                <div x-text="`消耗：${action.costHint || '未知'}`"></div>
+                <div x-text="`奖励：${action.rewardHint || '未知'}`"></div>
+              </div>
+            </button>
+          </template>
+        </div>
+        <button @click="useItem('red')" :disabled="inventory.redPotions < 1 || stats.hp >= stats.maxHp">
+          饮用红药 +3 HP
+        </button>
+        <button @click="useItem('blue')" :disabled="inventory.bluePotions < 1 || stats.stamina >= stats.maxStamina">
+          饮用蓝药 +3 耐力
+        </button>
+        <button @click="takeShortRest" :disabled="isLoading">
+          原地稍作休息（耐力+1，回想上一遭遇）
+        </button>
+        <span class="hint-text">每次移动会消耗 1 点耐力 · 随时记录 AI 提示</span>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('dungeonApp', () => ({
+        apiReady: false,
+        isMenu: true,
+        isLoading: false,
+        viewRadius: 4,
+        stats: {
+          hp: 10,
+          maxHp: 10,
+          stamina: 8,
+          maxStamina: 8,
+        },
+        inventory: {
+          coins: 8,
+          redPotions: 1,
+          bluePotions: 1,
+        },
+        player: {
+          x: 0,
+          y: 0,
+        },
+        visited: {},
+        cells: {},
+        encounterLog: [],
+        activeCell: null,
+        currentActions: [],
+        logChannel: '[蓝焰地下城]',
+        basePrompt: [
+          '你是“蓝焰地下城”的事件叙述者，需要为 8-bit 像素地牢生成简洁而具画面感的遭遇。',
+          '规则：',
+          '1. 每次只描述当前格子的遭遇，可包含敌人、环境、战利品或事件。',
+          '2. 给出玩家可能采取的行动建议，以及这些行动对应的生命值/耐力/物品变化提示，保持定性描述或小幅度整数变化，不要设计复杂数值公式。',
+          '3. 若提供奖励或损耗，明确写出该奖励或损耗；推荐使用短句或分行列出。',
+          '4. 输出格式建议包含：场景描写、遭遇要点、行动建议/战利品（如有）。保持 80-150 字，使用中文。',
+          '5. 整体氛围为黑暗奇幻、蓝白街机风，兼具神秘与紧张感。',
+          '6. 结尾必须附带一个 Markdown 代码块，语言标识为 json，内容是一个行动选项数组，例如：',
+          '```json',
+          '[{"id":"A","title":"调查蓝焰祭坛","summary":"尝试解读符文","costHint":"可能消耗1点耐力","rewardHint":"或许找到金币"}]',
+          '```',
+          '7. 选项 id 仅使用单个大写字母，summary/costHint/rewardHint 用简短中文描述，数组长度保持 2-3。',
+          '8. 代码块之后不要再写额外文字。'
+        ].join('\\n'),
+
+        async init() {
+          this.log('初始化应用，等待 DZMM API 就绪');
+          await this.waitForDZMM();
+          this.apiReady = true;
+          this.log('DZMM API 已就绪，可进入冒险');
+        },
+
+        waitForDZMM() {
+          return new Promise((resolve) => {
+            if (window?.dzmm?.completions) {
+              this.log('检测到 dzmm 接口已存在，直接进入');
+              resolve();
+              return;
+            }
+            const handler = (event) => {
+              if (event.data?.type === 'dzmm:ready') {
+                window.removeEventListener('message', handler);
+                this.log('收到 dzmm:ready 事件');
+                resolve();
+              }
+            };
+            window.addEventListener('message', handler);
+          });
+        },
+
+        log(message, payload) {
+          if (payload !== undefined) {
+            console.log(`${this.logChannel} ${message}`, payload);
+          } else {
+            console.log(`${this.logChannel} ${message}`);
+          }
+        },
+
+        warn(message, payload) {
+          if (payload !== undefined) {
+            console.warn(`${this.logChannel} ${message}`, payload);
+          } else {
+            console.warn(`${this.logChannel} ${message}`);
+          }
+        },
+
+        errorLog(message, payload) {
+          if (payload !== undefined) {
+            console.error(`${this.logChannel} ${message}`, payload);
+          } else {
+            console.error(`${this.logChannel} ${message}`);
+          }
+        },
+
+        startJourney() {
+          this.isMenu = false;
+          const startKey = this.cellKey(this.player.x, this.player.y);
+          this.log('冒险开始，记录起点', { position: { ...this.player } });
+          this.$nextTick(() => {
+            this.visited[startKey] = true;
+            this.cells[startKey] = {
+              position: { ...this.player },
+              visitedAt: new Date(),
+            };
+            this.logEncounter({
+              title: '起点 | 古老的蓝焰篝火',
+              content: '你站在幽蓝火焰旁，冰冷石壁斑驳。篝火低语：向前迈步，迷雾将被点亮。',
+              position: { ...this.player },
+              meta: this.formatMeta('系统提示'),
+            });
+          });
+        },
+
+        visibleGrid() {
+          const rows = [];
+          for (let y = this.player.y + this.viewRadius; y >= this.player.y - this.viewRadius; y--) {
+            const row = { y, cells: [] };
+            for (let x = this.player.x - this.viewRadius; x <= this.player.x + this.viewRadius; x++) {
+              const key = this.cellKey(x, y);
+              const isCurrent = x === this.player.x && y === this.player.y;
+              const isVisited = Boolean(this.visited[key]);
+              const isReachable = this.isAdjacent(x, y);
+              const cellData = this.cells[key];
+              row.cells.push({
+                x,
+                y,
+                key,
+                isCurrent,
+                isVisited,
+                isReachable,
+                label: cellData?.label ?? '',
+              });
+            }
+            rows.push(row);
+          }
+          return rows;
+        },
+
+        cellKey(x, y) {
+          return `${x},${y}`;
+        },
+
+        isAdjacent(x, y) {
+          const dx = Math.abs(this.player.x - x);
+          const dy = Math.abs(this.player.y - y);
+          return dx + dy === 1;
+        },
+
+        async attemptMove(cell) {
+          if (this.isLoading) {
+            this.warn('移动被拒绝：AI 仍在生成遭遇，稍后再试', { target: { x: cell.x, y: cell.y } });
+            return;
+          }
+
+          if (!cell.isReachable) {
+          this.warn('移动被拒绝：目标不是相邻格', {
+            from: { ...this.player },
+            to: { x: cell.x, y: cell.y },
+          });
+          return;
+        }
+
+        const staminaBefore = this.stats.stamina;
+        this.log('尝试移动', {
+          from: { ...this.player },
+          to: { x: cell.x, y: cell.y },
+          staminaBefore,
+        });
+
+        this.currentActions = [];
+        this.player = { x: cell.x, y: cell.y };
+        const key = this.cellKey(cell.x, cell.y);
+        if (!this.visited[key]) {
+          this.visited[key] = true;
+          this.cells[key] = {
+              position: { x: cell.x, y: cell.y },
+            };
+          }
+          this.consumeStamina(1);
+          this.log('移动完成', {
+            position: { ...this.player },
+            staminaAfter: this.stats.stamina,
+          });
+          await this.resolveEncounter(cell.x, cell.y);
+        },
+
+        consumeStamina(amount) {
+          const next = Math.max(0, this.stats.stamina - amount);
+          this.log('消耗耐力', {
+            amount,
+            before: this.stats.stamina,
+            after: next,
+          });
+          this.stats = { ...this.stats, stamina: next };
+        },
+
+        restoreStamina(amount) {
+          const next = Math.min(this.stats.maxStamina, this.stats.stamina + amount);
+          this.log('恢复耐力', {
+            amount,
+            before: this.stats.stamina,
+            after: next,
+          });
+          this.stats = { ...this.stats, stamina: next };
+        },
+
+        restoreHp(amount) {
+          const next = Math.min(this.stats.maxHp, this.stats.hp + amount);
+          this.log('恢复生命', {
+            amount,
+            before: this.stats.hp,
+            after: next,
+          });
+          this.stats = { ...this.stats, hp: next };
+        },
+
+        async resolveEncounter(x, y) {
+          const key = this.cellKey(x, y);
+          const cell = this.cells[key] || { position: { x, y } };
+          if (cell.encounter) {
+            this.currentActions = cell.encounter.actions ?? [];
+            this.log('重访已生成的格子，直接读取缓存', {
+              position: { x, y },
+            });
+            this.logEncounter({
+              title: `再次来到 (${x}, ${y})`,
+              content: cell.encounter.content,
+              position: { x, y },
+              meta: this.formatMeta('记录回放'),
+            });
+            return;
+          }
+
+          const prompt = this.composePrompt(x, y);
+          this.log('=== 遭遇生成开始 ===', {
+            position: { x, y },
+            stamina: this.stats.stamina,
+            hp: this.stats.hp,
+          });
+          this.log('传给 AI 的提示词', prompt);
+          this.isLoading = true;
+          this.activeCell = key;
+          let lastContent = '';
+          const streamId = `${key}-stream`;
+
+          try {
+            await window.dzmm.completions(
+              {
+                model: 'nalang-max-0826',
+                messages: [{ role: 'user', content: prompt }],
+                maxTokens: 600,
+              },
+              (newContent, done) => {
+                lastContent = newContent;
+                this.updateLiveEncounter(newContent);
+                if (done) {
+                  this.isLoading = false;
+                  this.log('收到完整的遭遇描述', {
+                    position: { x, y },
+                    length: newContent?.length ?? 0,
+                  });
+                }
+              }
+            );
+          } catch (error) {
+            this.errorLog('生成遭遇失败', {
+              position: { x, y },
+              error,
+            });
+            lastContent = 'AI 遭遇生成失败，请稍后重试。';
+            this.isLoading = false;
+          }
+          if (this.isLoading) {
+            this.isLoading = false;
+          }
+
+          const { cleaned, actions } = this.extractActionsFromContent(lastContent);
+          lastContent = cleaned.trim();
+          const completed = (cell.encounter?.completedActions ?? []).filter((id) =>
+            actions.some((action) => action.id === id)
+          );
+
+          cell.encounter = {
+            content: lastContent,
+            generatedAt: new Date(),
+            actions,
+            completedActions: completed,
+          };
+          this.cells[key] = { ...cell };
+          this.encounterLog = this.encounterLog.filter((entry) => entry.id !== streamId);
+          this.logEncounter({
+            title: `(${x}, ${y}) 的遭遇`,
+            content: lastContent,
+            position: { x, y },
+            meta: this.formatMeta('AI 生成'),
+          });
+          this.log('=== 遭遇生成结束 ===', {
+            position: { x, y },
+            cached: true,
+          });
+          this.currentActions = actions;
+          this.activeCell = null;
+        },
+
+        composePrompt(x, y) {
+          const state = [
+            `当前位置: (${x}, ${y})`,
+            `生命值: ${this.stats.hp}/${this.stats.maxHp}`,
+            `耐力值: ${this.stats.stamina}/${this.stats.maxStamina}`,
+            `金币: ${this.inventory.coins}`,
+            `携带: 红药 ${this.inventory.redPotions} 瓶, 蓝药 ${this.inventory.bluePotions} 瓶`,
+          ].join('\\n');
+
+          return [
+            this.basePrompt,
+            '---',
+            '【冒险者状态快照】',
+            state,
+            '请基于当前状态生成一个独特的格子遭遇。'
+          ].join('\\n');
+        },
+
+        updateLiveEncounter(content) {
+          if (!content) return;
+          const key = this.activeCell;
+          if (!key) return;
+          const liveId = `${key}-stream`;
+          const existingIndex = this.encounterLog.findIndex((item) => item.id === liveId);
+          if (existingIndex >= 0) {
+            const updated = {
+              ...this.encounterLog[existingIndex],
+              content,
+            };
+            this.encounterLog.splice(existingIndex, 1, updated);
+          } else {
+            this.log('创建流式遭遇占位', { cell: key });
+            this.encounterLog.push({
+              id: liveId,
+              title: `(${key}) 遭遇（生成中）`,
+              content,
+              position: this.cells[key]?.position ?? { x: 0, y: 0 },
+              meta: this.formatMeta('AI 正在生成'),
+            });
+          }
+        },
+
+        logEncounter(entry) {
+          const id = entry.id ?? `${entry.position.x},${entry.position.y}-${Date.now()}`;
+          this.encounterLog.push({
+            id,
+            title: entry.title,
+            content: entry.content,
+            meta: entry.meta,
+            position: entry.position,
+          });
+          this.log('记录遭遇日志', {
+            id,
+            title: entry.title,
+            source: entry.meta,
+          });
+        },
+
+        formatMeta(source) {
+          const timestamp = new Date().toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+          return `${source} · ${timestamp}`;
+        },
+
+        useItem(type) {
+          if (type === 'red') {
+            if (this.inventory.redPotions < 1) {
+              this.warn('红药使用失败：背包里没有红药');
+              return;
+            }
+            if (this.stats.hp >= this.stats.maxHp) {
+              this.warn('红药使用失败：生命值已满');
+              return;
+            }
+            this.restoreHp(3);
+            this.inventory = {
+              ...this.inventory,
+              redPotions: this.inventory.redPotions - 1,
+            };
+            this.log('饮用红药', {
+              remaining: this.inventory.redPotions,
+              hp: this.stats.hp,
+            });
+            this.logEncounter({
+              title: '饮用红药',
+              content: '红药的温热在血管中流淌，你的生命值恢复了 3 点。',
+              position: { ...this.player },
+              meta: this.formatMeta('自我操作'),
+            });
+          }
+          if (type === 'blue') {
+            if (this.inventory.bluePotions < 1) {
+              this.warn('蓝药使用失败：背包里没有蓝药');
+              return;
+            }
+            if (this.stats.stamina >= this.stats.maxStamina) {
+              this.warn('蓝药使用失败：耐力值已满');
+              return;
+            }
+            this.restoreStamina(3);
+            this.inventory = {
+              ...this.inventory,
+              bluePotions: this.inventory.bluePotions - 1,
+            };
+            this.log('饮用蓝药', {
+              remaining: this.inventory.bluePotions,
+              stamina: this.stats.stamina,
+            });
+            this.logEncounter({
+              title: '饮用蓝药',
+              content: '冰凉的蓝药提振了精神，耐力恢复 3 点。',
+              position: { ...this.player },
+              meta: this.formatMeta('自我操作'),
+            });
+          }
+          if (type !== 'red' && type !== 'blue') {
+            this.warn('未识别的药水类型', { type });
+          }
+        },
+
+        takeShortRest() {
+          this.log('进行短暂休整', {
+            position: { ...this.player },
+            staminaBefore: this.stats.stamina,
+          });
+          this.restoreStamina(1);
+          const key = this.cellKey(this.player.x, this.player.y);
+          const cell = this.cells[key];
+          const recap = cell?.encounter?.content ?? '你静坐片刻，倾听远处回声。';
+          this.logEncounter({
+            title: '短暂休整',
+            content: `你深呼吸调整状态，耐力恢复 1 点。脑海浮现刚才的场景：\\n${recap}`,
+            position: { ...this.player },
+            meta: this.formatMeta('自我操作'),
+          });
+          this.log('短暂休整结束', {
+            staminaAfter: this.stats.stamina,
+          });
+        },
+
+        async executeAction(action) {
+          if (this.isLoading) {
+            this.warn('行动被拒绝：AI 正在生成内容');
+            return;
+          }
+          const key = this.cellKey(this.player.x, this.player.y);
+          const cell = this.cells[key];
+          if (!cell?.encounter) {
+            this.warn('当前格子没有遭遇上下文，无法执行行动');
+            return;
+          }
+          if (this.isActionCompleted(action)) {
+            this.warn('该行动已执行过，忽略重复点击', { action });
+            return;
+          }
+
+          this.log('执行行动', { action, position: { ...this.player } });
+          const prompt = this.composeActionPrompt(cell.encounter.content, action);
+          this.log('行动结果提示词', prompt);
+          this.isLoading = true;
+          let lastContent = '';
+
+          try {
+            await window.dzmm.completions(
+              {
+                model: 'nalang-max-0826',
+                messages: [{ role: 'user', content: prompt }],
+                maxTokens: 700,
+              },
+              (newContent, done) => {
+                lastContent = newContent;
+                if (done) {
+                  this.isLoading = false;
+                  this.log('行动结果生成完成', {
+                    actionId: action.id,
+                    length: newContent?.length ?? 0,
+                  });
+                }
+              }
+            );
+          } catch (error) {
+            this.errorLog('执行行动时 AI 调用失败', { error, action });
+            lastContent = 'AI 未能解析该行动，请稍后重试或选择其他选项。';
+            this.isLoading = false;
+          }
+          if (this.isLoading) {
+            this.isLoading = false;
+          }
+
+          const { cleaned, changes } = this.extractAdjustments(lastContent);
+          this.applyAdjustments(changes);
+
+          this.logEncounter({
+            title: `行动结果 - ${action.title}`,
+            content: cleaned.trim(),
+            position: { ...this.player },
+            meta: this.formatMeta('AI 行动结论'),
+          });
+
+          const completed = cell.encounter?.completedActions ?? [];
+          if (!completed.includes(action.id)) {
+            completed.push(action.id);
+          }
+          const updatedCell = {
+            ...cell,
+            encounter: {
+              ...cell.encounter,
+              completedActions: completed,
+            },
+          };
+          this.cells[key] = updatedCell;
+          this.currentActions = [...(updatedCell.encounter?.actions ?? [])];
+          this.activeCell = null;
+        },
+
+        composeActionPrompt(narrative, action) {
+          const state = [
+            `生命值: ${this.stats.hp}/${this.stats.maxHp}`,
+            `耐力值: ${this.stats.stamina}/${this.stats.maxStamina}`,
+            `金币: ${this.inventory.coins}`,
+            `红药: ${this.inventory.redPotions}, 蓝药: ${this.inventory.bluePotions}`,
+          ].join('\\n');
+
+          return [
+            '你仍是“蓝焰地下城”的事件叙述者，需要在 8-bit 蓝白街机的黑暗奇幻氛围下延展剧情。',
+            '【当前格子事件回顾】',
+            narrative,
+            '【冒险者状态快照】',
+            state,
+            '【已选择的行动】',
+            JSON.stringify(action),
+            '请以 60-120 字描述该行动的详细结果，保持黑暗奇幻、蓝白街机的语气。',
+            '结尾必须附带一个 json 代码块（无其他注释），示例：',
+            '```json',
+            '{"hp":-1,"stamina":0,"coins":5,"redPotions":0,"bluePotions":0,"loot":["蓝焰碎片"],"notes":"若无战利品请使用空数组"}',
+            '```',
+            '字段说明：hp/stamina/coins/redPotions/bluePotions 为整数的相对变化，可为 0；loot 为字符串数组；notes 为一句补充描述。如果没有任何变化，请输出 0 和空数组，保持字段完整。',
+            '不要在结果中再次提供新的行动选项，代码块之后也不要添加额外文字。',
+          ].join('\\n');
+        },
+
+        extractActionsFromContent(content) {
+          const pattern = /```json([\s\S]*?)```/;
+          const match = pattern.exec(content);
+          if (!match) {
+            this.warn('未找到行动选项代码块，默认无可点击行动');
+            return { cleaned: content, actions: [] };
+          }
+          const jsonText = match[1].trim();
+          let parsedActions = [];
+          try {
+            const data = JSON.parse(jsonText);
+            if (Array.isArray(data)) {
+              parsedActions = data;
+            } else if (Array.isArray(data?.actions)) {
+              parsedActions = data.actions;
+            }
+          } catch (error) {
+            this.errorLog('解析行动选项失败', { error, json: jsonText });
+          }
+
+          const actions = (parsedActions || [])
+            .filter((item) => item?.id && item?.title)
+            .map((item) => ({
+              id: String(item.id),
+              title: item.title,
+              summary: item.summary ?? '',
+              costHint: item.costHint ?? '',
+              rewardHint: item.rewardHint ?? '',
+            }));
+
+          const cleaned = content.replace(match[0], '【行动选项见下方按钮】');
+          return { cleaned, actions };
+        },
+
+        extractAdjustments(content) {
+          const pattern = /```json([\s\S]*?)```/;
+          const match = pattern.exec(content);
+          if (!match) {
+            this.warn('未找到行动结果的变化代码块，默认无属性变化');
+            return { cleaned: content, changes: null };
+          }
+          const jsonText = match[1].trim();
+          let changes = null;
+          try {
+            const data = JSON.parse(jsonText);
+            if (data && typeof data === 'object') {
+              changes = data;
+            }
+          } catch (error) {
+            this.errorLog('解析行动结果变化失败', { error, json: jsonText });
+          }
+          const cleaned = content.replace(match[0], '').trim();
+          return { cleaned, changes };
+        },
+
+        applyAdjustments(changes) {
+          if (!changes || typeof changes !== 'object') return;
+
+          const nextStats = { ...this.stats };
+          let statsChanged = false;
+
+          if (typeof changes.hp === 'number') {
+            const before = nextStats.hp;
+            const delta = Math.trunc(changes.hp);
+            const after = Math.max(0, Math.min(nextStats.maxHp, before + delta));
+            nextStats.hp = after;
+            statsChanged = statsChanged || after !== before;
+            this.log('生命值调整', { before, delta, after });
+          }
+
+          if (typeof changes.stamina === 'number') {
+            const before = nextStats.stamina;
+            const delta = Math.trunc(changes.stamina);
+            const after = Math.max(0, Math.min(nextStats.maxStamina, before + delta));
+            nextStats.stamina = after;
+            statsChanged = statsChanged || after !== before;
+            this.log('耐力调整', { before, delta, after });
+          }
+
+          if (statsChanged) {
+            this.stats = nextStats;
+          }
+
+          const nextInventory = { ...this.inventory };
+          let inventoryChanged = false;
+
+          if (typeof changes.coins === 'number') {
+            const before = nextInventory.coins;
+            const delta = Math.trunc(changes.coins);
+            const after = Math.max(0, before + delta);
+            nextInventory.coins = after;
+            inventoryChanged = inventoryChanged || after !== before;
+            this.log('金币调整', { before, delta, after });
+          }
+
+          if (typeof changes.redPotions === 'number') {
+            const before = nextInventory.redPotions;
+            const delta = Math.trunc(changes.redPotions);
+            const after = Math.max(0, before + delta);
+            nextInventory.redPotions = after;
+            inventoryChanged = inventoryChanged || after !== before;
+            this.log('红药数量调整', { before, delta, after });
+          }
+
+          if (typeof changes.bluePotions === 'number') {
+            const before = nextInventory.bluePotions;
+            const delta = Math.trunc(changes.bluePotions);
+            const after = Math.max(0, before + delta);
+            nextInventory.bluePotions = after;
+            inventoryChanged = inventoryChanged || after !== before;
+            this.log('蓝药数量调整', { before, delta, after });
+          }
+
+          if (inventoryChanged) {
+            this.inventory = nextInventory;
+          }
+
+          if (Array.isArray(changes.loot) && changes.loot.length > 0) {
+            this.log('获得战利品', { loot: changes.loot });
+          }
+
+          if (changes.notes) {
+            this.log('行动备注', { notes: changes.notes });
+          }
+        },
+
+        isActionCompleted(action) {
+          const key = this.cellKey(this.player.x, this.player.y);
+          const cell = this.cells[key];
+          const completed = cell?.encounter?.completedActions ?? [];
+          return completed.includes(action.id);
+        },
+      }));
+    });
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

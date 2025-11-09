@@ -1,0 +1,774 @@
+<!--
+===============================================================================
+
+🎮 自定义指南：
+1. 角色设置：编辑 character_name、character_image 和 createSystemPrompt()
+2. 样式调整：修改CSS变量和背景图片
+3. AI模型：在 requestAIResponse() 中配置模型设置
+4. 游戏机制：在 updateGameState() 中扩展新功能
+
+===============================================================================
+-->
+
+<body x-data="">
+  <!-- 加载中状态 -->
+  <div x-show="$store.game.loading" class="loading-container">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <p>正在初始化游戏...</p>
+    </div>
+  </div>
+
+  <!-- 设置界面 -->
+  <div x-show="!$store.game.started && !$store.game.loading" x-transition class="setup">
+    <div class="card">
+      <h1>💝 恋爱物语</h1>
+
+      <div class="form-group">
+        <label>你的名字：</label>
+        <input x-model="$store.game.player_name" placeholder="请输入你的名字" />
+      </div>
+
+      <div class="form-group">
+        <label>初始好感度：</label>
+        <input type="range" x-model="$store.game.initial_affection" min="0" max="100" />
+        <div class="range-display">
+          <span>冷淡 (0)</span>
+          <span class="badge" x-text="$store.game.initial_affection"></span>
+          <span>热情 (100)</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>初始关系：</label>
+        <select x-model="$store.game.relationship">
+          <option value="同学">同学</option>
+          <option value="青梅竹马">青梅竹马</option>
+          <option value="初次见面">初次见面</option>
+          <option value="朋友">朋友</option>
+          <option value="前辈后辈">前辈后辈</option>
+        </select>
+      </div>
+
+      <button @click="$store.game.start()" :disabled="!$store.game.player_name">
+        💖 开始游戏
+      </button>
+
+      <div class="instructions">
+        <h3>游戏说明：</h3>
+        <ul>
+          <li>好感度会影响小樱对你的态度</li>
+          <li>不同的选择会改变好感度</li>
+          <li>达到100好感度会触发特殊剧情</li>
+          <li>注意观察小樱的心情变化</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 游戏界面 -->
+  <div x-show="$store.game.started && !$store.game.loading" x-transition class="game"
+    :data-time="$store.game.current_time">
+    <!-- 状态栏 -->
+    <div class="status-bar">
+      <div class="affection">
+        <span>💕 好感度</span>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="`width: ${$store.game.current_affection || 0}%`"></div>
+        </div>
+        <span class="badge" x-text="$store.game.current_affection || 0"></span>
+      </div>
+      <div class="time">
+        <span x-text="$store.game.current_time === '夜' ? '🌙' : '☀️'"></span>
+        <span x-text="$store.game.current_time || '日'"></span>
+      </div>
+    </div>
+
+    <!-- 角色立绘 -->
+    <div class="character-area">
+      <img
+        :src="$store.game.character_image || 'https://opengameart.org/sites/default/files/illyustraciya_bez_nazvaniya_2.png'"
+        :alt="$store.game.character_name" class="character-image" />
+    </div>
+
+    <!-- 对话框 -->
+    <div class="dialogue">
+      <div class="speaker" x-text="$store.game.character_name"></div>
+      <div class="content" x-html="$store.game.chat_content || '对话加载中...'"></div>
+    </div>
+
+    <!-- 输入区域 -->
+    <div class="input-area">
+      <input x-model="$store.game.input" placeholder="输入你的回复..." :disabled="$store.game.disabled"
+        @keydown.enter="$store.game.next()" />
+      <button @click="$store.game.next()" :disabled="$store.game.disabled">发送</button>
+    </div>
+  </div>
+
+  <script type="text/javascript" nonce="a71d16c1a5ec4ad6b0c9724c03a" src="//injections.adguard.org?ts=1762261586344&amp;type=content-script&amp;dmn=www.dzmm.ai&amp;url=https%3A%2F%2Fwww.dzmm.ai%2Fgamefy%2Fgalgame.html&amp;app=chrome.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=0"></script><script type="text/javascript" nonce="a71d16c1a5ec4ad6b0c9724c03a" src="//injections.adguard.org?ts=1762261586344&amp;name=AdGuard%20Extra&amp;name=AdGuard%20Popup%20Blocker&amp;type=user-script"></script><script>
+    const dzmmReady = new Promise((resolve) => {
+      window.addEventListener('message', function handler(event) {
+        if (event.data?.type === 'dzmm:ready') {
+          window.removeEventListener('message', handler);
+          resolve();
+        }
+      });
+    });
+
+    const GAME_SAVE_KEY = 'game_state';
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('game', {
+        // 游戏状态
+        started: false,
+        disabled: false,
+        loading: true,  // 初始为加载中状态
+
+        // 玩家配置
+        player_name: '',
+        initial_affection: 50,
+        relationship: '同学',
+        input: '',
+        character_name: '小樱',
+        character_image: '',
+
+        // 游戏变量
+        messages: [],
+        current_affection: 50,
+        current_time: '日',
+        current_mood: '普通',
+        chat_content: '',
+
+        // =============================================================================
+        // 角色提示词 - 为你的故事自定义这个函数
+        // =============================================================================
+        createSystemPrompt() {
+          return `你是恋爱游戏中的女主角小樱。你必须严格按照以下格式回复，否则游戏将无法运行。
+
+当前状态：
+玩家名：${this.player_name || '玩家'}
+好感度：${this.current_affection || this.initial_affection}
+关系：${this.relationship}
+心情：${this.current_mood || '普通'}
+时间：${this.current_time || '日'}
+
+【极其重要的格式要求】
+你的每个回复都必须严格按照这个模板：
+
+###STATE
+{"affection":数字,"mood":"心情词","time":"时间词","summary":"简短总结"}
+###END
+角色对话内容
+
+【必须遵守的规则】
+1. 前三行必须是###STATE、JSON、###END，不能有任何其他内容
+2. JSON必须在一行内完成，包含且仅包含这4个字段
+3. affection是0-100的数字，根据互动调整±10以内
+4. mood只能是：普通、高兴、伤心、害羞、生气之一
+5. time只能是：日、夜之一
+6. 第4行开始才是角色对话
+
+【正确示例】
+用户：早上好
+回复：
+###STATE
+{"affection":52,"mood":"高兴","time":"日","summary":"早安问候"}
+###END
+早上好呀！今天天气真不错，要一起去上学吗？
+
+【错误示例 - 绝对不要这样】
+❌ 把对话写在STATE前面
+❌ 把STATE写在对话后面
+❌ 不写STATE
+❌ JSON格式错误
+
+记住：如果不按格式输出，游戏会崩溃！`;
+        },
+
+        // =============================================================================
+        // 核心游戏功能
+        // =============================================================================
+        start() {
+          this.messages = [{ role: 'user', content: this.createSystemPrompt() }];
+          this.current_affection = this.initial_affection;
+          this.started = true;
+          void this.persistAll();
+          this.next();
+        },
+
+        async init() {
+          this.loading = true;
+          // 等待 DZMM API 就绪
+          await dzmmReady;
+          await this.restoreProgress();
+          this.loading = false;
+        },
+
+        async next() {
+          this.disabled = true;
+          try {
+            const userMessage = this.input;
+            this.input = '';
+
+            if (userMessage) {
+              this.messages.push({ role: 'user', content: userMessage });
+            }
+
+            this.chat_content = '<span class="loading">...</span>';
+            await this.requestAIResponse();
+            void this.persistAll();
+          } catch (error) {
+            console.error('错误:', error);
+          } finally {
+            this.disabled = false;
+          }
+        },
+
+        async requestAIResponse() {
+          let content = '';
+
+          await window.dzmm.completions(
+            { model: 'nalang-xl-10', messages: this.messages, maxTokens: 1500 },
+            (newContent, done) => {
+              content = newContent;
+              const parsed = this.parseAIResponse(content);
+
+              if (parsed.ready) {
+                this.updateGameState(parsed.state);
+                this.chat_content = parsed.dialogue;
+              }
+
+              if (done) {
+                this.messages.push({ role: 'assistant', content: content });
+              }
+            }
+          );
+        },
+
+        parseAIResponse(content) {
+          const stateMarker = '###STATE';
+          const endMarker = '###END';
+          const stateIndex = content.indexOf(stateMarker);
+          const endIndex = content.indexOf(endMarker, stateIndex + stateMarker.length);
+
+          if (stateIndex === -1 || endIndex === -1) {
+            return { ready: false };
+          }
+
+          const jsonRaw = content.slice(stateIndex + stateMarker.length, endIndex).trim();
+
+          try {
+            const state = JSON.parse(jsonRaw);
+            const dialogue = content.slice(endIndex + endMarker.length).trim();
+            return { ready: true, state, dialogue };
+          } catch (error) {
+            console.warn('状态解析失败:', error);
+            return { ready: false };
+          }
+        },
+
+        updateGameState(state) {
+          if (typeof state.affection === 'number') {
+            this.current_affection = Math.max(0, Math.min(100, state.affection));
+          }
+          if (state.mood) this.current_mood = state.mood;
+          if (state.time) this.current_time = state.time;
+        },
+
+        // =============================================================================
+        // 存档/读档
+        // =============================================================================
+        async persistAll() {
+          try {
+            const kv = window.dzmm?.kv;
+            const excludeKeys = ['disabled', 'loading', 'input'];
+
+            const saveData = {};
+            Object.keys(this).forEach(key => {
+              if (!excludeKeys.includes(key) && typeof this[key] !== 'function') {
+                saveData[key] = this[key];
+              }
+            });
+
+            await kv.put(GAME_SAVE_KEY, saveData);
+          } catch (error) {
+            console.warn('保存失败:', error);
+          }
+        },
+
+        async restoreProgress() {
+          try {
+            const kv = window.dzmm?.kv;
+            const result = await kv.get(GAME_SAVE_KEY);
+            const saveData = result?.value || result;
+
+            // 恢复所有状态
+            if (saveData) {
+              Object.assign(this, saveData);
+            }
+          } catch (error) {
+            console.warn('读取失败:', error);
+          }
+        }
+      });
+
+      queueMicrotask(() => Alpine.store('game').init?.());
+    });
+  </script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 响应式：移动端适配 */
+    @media (max-width: 768px) {
+      body {
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0;
+      }
+    }
+
+    /* 加载中样式 */
+    .loading-container {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .loading-card {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 20px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-card p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .setup {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 25px;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      .setup {
+        padding: 10px;
+      }
+    }
+
+    .card {
+      max-width: 650px;
+      width: 90%;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    @media (max-width: 768px) {
+      .card {
+        padding: 20px 15px;
+        width: 100%;
+        max-height: 95vh;
+        overflow-y: auto;
+        border-radius: 0;
+      }
+    }
+
+    h1 {
+      font-size: 36px;
+      margin-bottom: 35px;
+      letter-spacing: 2px;
+      margin-bottom: 30px;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 28px;
+        margin-bottom: 20px;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .range-display {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    button:hover:not(:disabled) {
+      background: #45a049;
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .instructions {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .instructions h3 {
+      margin-bottom: 10px;
+    }
+
+    .instructions ul {
+      padding-left: 20px;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    /* 游戏界面 */
+    .game {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: fill;
+      background-color: transparent;
+    }
+
+    .game[data-time='日'] {
+      background-image: url('https://opengameart.org/sites/default/files/entrance_-_brightly_lit.png');
+    }
+
+    .game[data-time='夜'] {
+      background-image: url('https://opengameart.org/sites/default/files/entrance_-_dark_night.png');
+    }
+
+    .status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    @media (max-width: 768px) {
+      .status-bar {
+        height: 50px;
+        padding: 0 12px;
+        flex-wrap: nowrap;
+      }
+    }
+
+    .affection {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .affection {
+        gap: 6px;
+        font-size: 14px;
+      }
+
+      .affection > span:first-child {
+        display: none;
+      }
+    }
+
+    .progress-bar {
+      width: 150px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 768px) {
+      .progress-bar {
+        width: 100px;
+        height: 16px;
+      }
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6b9d, #ff4757);
+      transition: width 0.3s ease;
+    }
+
+    .time {
+      font-size: 18px;
+    }
+
+    .character-area {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: 20px;
+      width: 100vw;
+      max-height: 80vh;
+      aspect-ratio: 5/7;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      .character-area {
+        bottom: 180px;
+        max-height: 50vh;
+        width: 80vw;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .character-area {
+        bottom: 190px;
+        max-height: 40vh;
+      }
+    }
+
+    .character-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.5));
+    }
+
+    .dialogue {
+      position: absolute;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 700px;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      padding: 20px;
+      z-index: 90;
+    }
+
+    @media (max-width: 768px) {
+      .dialogue {
+        bottom: 90px;
+        width: 92%;
+        padding: 15px;
+        border-radius: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .dialogue {
+        bottom: 80px;
+        padding: 12px;
+      }
+    }
+
+    .speaker {
+      color: #ff6b9d;
+      font-size: 18px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+      .speaker {
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+    }
+
+    .content {
+      color: white;
+      font-size: 16px;
+      line-height: 1.6;
+      min-height: 60px;
+    }
+
+    @media (max-width: 768px) {
+      .content {
+        font-size: 14px;
+        line-height: 1.5;
+        min-height: 50px;
+      }
+    }
+
+    .input-area {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 20px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7));
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    @media (max-width: 768px) {
+      .input-area {
+        padding: 12px;
+        gap: 8px;
+      }
+    }
+
+    .input-area input {
+      flex: 1;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 25px;
+      color: white;
+      font-size: 16px;
+      outline: none;
+    }
+
+    @media (max-width: 768px) {
+      .input-area input {
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+    }
+
+    .input-area input:focus {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: #4caf50;
+    }
+
+    .input-area button {
+      width: auto;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #4caf50, #45a049);
+      border-radius: 25px;
+    }
+
+    @media (max-width: 768px) {
+      .input-area button {
+        padding: 10px 18px;
+        font-size: 14px;
+      }
+    }
+
+    .loading {
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    [x-cloak] {
+      display: none !important;
+    }
+
+    [x-transition] {
+      transition: all 0.3s ease;
+    }
+  </style>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>

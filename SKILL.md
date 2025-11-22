@@ -24,7 +24,7 @@ Invoke this skill when users:
 - Ask about available models and their performance characteristics
 - **Request message management features** ("How to add reroll/regenerate?", "How to let users edit messages?", "How to delete conversation branches?")
 - **Want multi-opening/multi-scenario systems** ("How to add multiple starting scenes?", "How to switch between different story routes?")
-- **Need help migrating from React/Vue to DZMM** ("How to migrate my app to DZMM?", "What's the DZMM equivalent of useState?")
+- **Need help migrating from React/Vue to DZMM** ("How to migrate my app to DZMM?", "What's the DZMM equivalent of useState?", "Can I use React/TypeScript with DZMM?", "How to build DZMM apps with modern frameworks?", "vite-plugin-singlefile for DZMM", "My DZMM app has sandbox errors", "Form submission blocked in DZMM", "localStorage not working in DZMM", "HTTP 400 error with DZMM API", "maxTokens limit exceeded")
 - **Ask about resource management** ("How to load images/audio in DZMM?", "Should I use URLs or embed resources?")
 
 ## Core Capabilities
@@ -344,6 +344,42 @@ Provide reusable, production-ready code patterns for common DZMM tasks.
 
 ### For Migrating React/Vue Applications to DZMM
 
+**Two Approaches Available:**
+
+#### Approach A: Keep React/Vue Framework (Recommended for Large Projects)
+
+Use modern build tools to maintain component-based development, then bundle to single HTML.
+
+**Tech Stack**: React + TypeScript + Vite + vite-plugin-singlefile
+
+**Workflow**:
+1. **Setup**: `npm create vite@latest my-app -- --template react-ts`
+2. **Install Plugin**: `npm install -D vite-plugin-singlefile`
+3. **Configure Vite**: Add plugin for single-file build mode
+4. **Develop**: Keep existing React components structure
+5. **Build**: `npm run build:single` → generates standalone HTML
+6. **Deploy**: Upload to DZMM platform
+
+**Key Considerations**:
+- ✅ Keep TypeScript type safety and component modularity
+- ✅ Hot reload during development
+- ✅ Rich ecosystem (shadcn/ui, React Router, etc.)
+- ⚠️ Handle sandbox restrictions (localStorage, form submission)
+- ⚠️ Enforce maxTokens limits (200-3000)
+- ⚠️ Prevent consecutive same-role messages in API calls
+
+**Critical Fixes**:
+- **localStorage**: Implement fallback to memory storage
+- **Forms**: Replace `<form>` with `<div>` + button onClick
+- **maxTokens**: Never exceed 3000 (API returns HTTP 400)
+- **Messages**: Merge emphasis into last user message to avoid consecutive roles
+
+**See**: Q11 in `references/developer-guide.md` for complete implementation guide
+
+#### Approach B: Rewrite to Alpine.js (Lightweight Alternative)
+
+Convert component hierarchy to single HTML with Alpine.js reactive sections.
+
 1. **Assessment**
    - Identify existing resources (images, audio, fonts) - **these will be reused via URLs**
    - Map React/Vue components to Alpine.js x-show pages
@@ -367,7 +403,7 @@ Provide reusable, production-ready code patterns for common DZMM tasks.
 
 4. **API Migration**
    - Replace `fetch('/api/chat')` with `dzmm.completions()`
-   - Convert localStorage to `dzmm.kv` operations
+   - Convert localStorage to `dzmm.kv` operations (or safe storage wrapper)
    - Add `dzmm:ready` event waiting
    - Implement streaming callbacks if needed
 
@@ -384,6 +420,16 @@ Provide reusable, production-ready code patterns for common DZMM tasks.
    - Check mobile responsiveness (375px, 768px, 1920px)
    - Validate state persistence with KV storage
    - Test on actual DZMM platform (dev and production modes)
+
+**Comparison**:
+| Factor | React + Vite | Alpine.js |
+|--------|--------------|-----------|
+| Type Safety | ✅ TypeScript | ❌ Plain JS |
+| Dev Experience | ✅ Hot reload | ⚠️ Manual refresh |
+| Ecosystem | ✅ Rich (shadcn/ui, etc.) | ⚠️ Limited |
+| File Size | ⚠️ Larger (900KB+) | ✅ Smaller (<100KB) |
+| Maintenance | ✅ Component-based | ⚠️ Single file can get messy |
+| Learning Curve | ⚠️ Steeper for beginners | ✅ Easier to learn |
 
 ## Model Selection Guide
 

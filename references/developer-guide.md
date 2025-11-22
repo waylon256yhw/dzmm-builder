@@ -1774,6 +1774,266 @@ Alpine.data('app', () => ({
 
 ---
 
+### Q11: 如何从 React/Vue 多组件框架迁移到 DZMM 单文件？
+
+**A**: 使用现代构建工具保持开发体验，最后打包成单文件。
+
+#### 技术栈选择
+
+**推荐方案**：React + TypeScript + Vite + vite-plugin-singlefile
+
+```bash
+# 1. 创建项目
+npm create vite@latest my-dzmm-app -- --template react-ts
+
+# 2. 安装单文件打包插件
+npm install -D vite-plugin-singlefile
+
+# 3. 配置 vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { viteSingleFile } from 'vite-plugin-singlefile';
+
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    mode === 'singlefile' ? viteSingleFile() : null,
+  ].filter(Boolean),
+  build: {
+    outDir: mode === 'singlefile' ? 'dist-single' : 'dist',
+  },
+}));
+```
+
+#### 架构设计
+
+```
+src/
+├── pages/           # 页面组件（对应 Alpine.js 的 x-show 切换）
+├── components/      # 可复用组件
+├── services/        # DZMM API 封装
+│   └── dzmm.ts      # initDzmm, completions, kvPut, kvGet
+├── lib/             # 工具函数
+│   ├── prompts.ts   # 提示词构建
+│   └── storage.ts   # localStorage 安全封装
+├── contexts/        # React Context（状态管理）
+└── types/           # TypeScript 类型定义
+```
+
+#### 关键实践
+
+**1. DZMM API 封装**（`src/services/dzmm.ts`）
+
+```typescript
+// 双重检测机制
+export async function initDzmm(): Promise<boolean> {
+  // 方式1：直接检测
+  if (window.dzmm && typeof window.dzmm.completions === 'function') {
+    return true;
+  }
+
+  // 方式2：事件监听 + 超时重检
+  const ready = await Promise.race([
+    new Promise<boolean>((resolve) => {
+      const handler = (event: MessageEvent) => {
+        if (event.data?.type === 'dzmm:ready') {
+          window.removeEventListener('message', handler);
+          resolve(true);
+        }
+      };
+      window.addEventListener('message', handler);
+    }),
+    new Promise<boolean>((resolve) => {
+      setTimeout(() => {
+        resolve(window.dzmm && typeof window.dzmm.completions === 'function');
+      }, 10000);
+    }),
+  ]);
+
+  return ready;
+}
+
+// TypeScript 类型安全
+export async function completions(
+  options: CompletionsOptions,
+  callback: StreamCallback
+): Promise<void> {
+  if (!window.dzmm) throw new Error('DZMM API 不可用');
+
+  await window.dzmm.completions(options, callback);
+}
+```
+
+**2. Sandbox 环境兼容**（`src/lib/storage.ts`）
+
+DZMM 发布环境使用 iframe sandbox，需处理 localStorage 限制：
+
+```typescript
+const memoryStorage: Record<string, string> = {};
+let localStorageAvailable: boolean | null = null;
+
+function isLocalStorageAvailable(): boolean {
+  if (localStorageAvailable !== null) return localStorageAvailable;
+  try {
+    const testKey = '__storage_test__';
+    window.localStorage.setItem(testKey, testKey);
+    window.localStorage.removeItem(testKey);
+    localStorageAvailable = true;
+    return true;
+  } catch {
+    localStorageAvailable = false;
+    return false;
+  }
+}
+
+export function setItem(key: string, value: string): void {
+  if (isLocalStorageAvailable()) {
+    localStorage.setItem(key, value);
+  } else {
+    memoryStorage[key] = value;
+  }
+}
+
+export function getItem(key: string): string | null {
+  if (isLocalStorageAvailable()) {
+    return localStorage.getItem(key);
+  }
+  return memoryStorage[key] || null;
+}
+```
+
+**3. Form 提交兼容**
+
+Sandbox 禁止 `<form>` 提交，需改用按钮点击：
+
+```tsx
+// ❌ 错误：会在发布环境报错
+<form onSubmit={handleSubmit}>
+  <button type="submit">提交</button>
+</form>
+
+// ✅ 正确：使用 div + button
+<div>
+  <button type="button" onClick={handleSubmit}>提交</button>
+</div>
+```
+
+**4. API 参数限制**
+
+```typescript
+// ⚠️ 关键错误：maxTokens 超限导致 HTTP 400
+export const DZMM_MODELS = [
+  { id: 'nalang-max-0826', maxTokens: 4000 },  // ❌ 超出范围
+];
+
+// ✅ 正确：遵守 200-3000 范围
+export const DZMM_MODELS = [
+  { id: 'nalang-max-0826', maxTokens: 3000 },
+  { id: 'nalang-xl-0826', maxTokens: 3000 },
+  { id: 'nalang-turbo-0826', maxTokens: 2000 },
+];
+```
+
+**5. 消息数组构建**
+
+```typescript
+// 确保没有连续相同角色的消息
+export function buildMessages(
+  character: Character,
+  messages: DzmmMessage[]
+): DzmmMessage[] {
+  const systemPrompt = buildSystemPrompt(character);
+  const cleanedMessages = messages.map(m => ({
+    role: m.role,
+    content: cleanMessageContent(m.content),
+  }));
+
+  // 将 emphasis 合并到最后一条 user 消息
+  const emphasis = getEmphasis();
+  for (let i = cleanedMessages.length - 1; i >= 0; i--) {
+    if (cleanedMessages[i].role === 'user') {
+      cleanedMessages[i].content =
+        `<last_input>\n${cleanedMessages[i].content}\n</last_input>\n\n${emphasis}`;
+      break;
+    }
+  }
+
+  return [
+    { role: 'user', content: systemPrompt },
+    ...cleanedMessages,
+  ];
+}
+```
+
+#### 构建和测试
+
+```json
+// package.json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:single": "vite build --mode singlefile",
+    "preview": "vite preview"
+  }
+}
+```
+
+**开发流程**：
+1. 本地开发：`npm run dev` - 热重载，快速迭代
+2. 构建单文件：`npm run build:single` - 生成 dist-single/index.html
+3. DZMM 测试：上传到 DZMM 平台测试 sandbox 兼容性
+4. 发布：通过 DZMM 工坊发布
+
+#### 常见陷阱
+
+| 问题 | 现象 | 解决方案 |
+|------|------|---------|
+| localStorage 访问失败 | "sandboxed" 错误 | 使用 memoryStorage 降级 |
+| Form 提交被阻止 | "allow-forms" 错误 | 改用 button + onClick |
+| API 返回 400 | maxTokens 过大 | 检查是否在 200-3000 范围内 |
+| 连续 user 消息 | API 拒绝 | 合并 emphasis 到最后一条 user |
+| reroll 第一条消息 | 空上下文错误 | 禁止 reroll index 0 |
+
+#### 调试技巧
+
+```typescript
+// 详细日志帮助排查 API 错误
+console.log('[DZMM] 发送请求:', {
+  model: options.model,
+  maxTokens: options.maxTokens,
+  messagesCount: options.messages.length,
+});
+
+options.messages.forEach((m, i) => {
+  console.log(`  [${i}] role: ${m.role}, length: ${m.content.length}`);
+  console.log(`      preview: ${m.content.substring(0, 150)}...`);
+});
+
+// 检测连续相同角色
+for (let i = 1; i < options.messages.length; i++) {
+  if (options.messages[i].role === options.messages[i - 1].role) {
+    console.warn(`⚠️ 连续的 ${options.messages[i].role} 消息！索引 ${i-1} 和 ${i}`);
+  }
+}
+```
+
+#### 优势总结
+
+**React/Vue 多组件 vs Alpine.js 单文件**：
+- ✅ TypeScript 类型安全
+- ✅ 组件化开发，易维护
+- ✅ 丰富的生态（UI 库、路由、状态管理）
+- ✅ 热重载开发体验
+- ✅ 最终仍然打包成单 HTML 文件
+
+**实际案例**：yoshiwara-chronicles 项目（54 commits）
+- 900+ KB 单文件（gzip: 473 KB）
+- 完整视觉小说系统（多开场、消息管理、富文本渲染、存档系统）
+- 从 React 多组件架构成功迁移到 DZMM 平台
+
+---
+
 ## 📚 附录：完整模板
 
 ### 最小可运行模板

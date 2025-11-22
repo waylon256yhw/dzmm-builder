@@ -229,6 +229,24 @@ Diagnose and fix common DZMM application issues.
 - Cause: KV key naming conflicts or version mismatch
 - Fix: Use versioned keys with unique identifiers
 
+**Form Submission Blocked (Public Release Only):**
+- Cause: DZMM public release uses iframe sandbox without `allow-forms` permission
+- Error: `Blocked form submission to '' because the form's frame is sandboxed`
+- Fix: Replace `<form>` with `<div>`, use `@click` instead of `@submit.prevent`
+- Example:
+  ```html
+  <!-- ❌ WRONG: Will fail in public release -->
+  <form @submit.prevent="handleSubmit()">
+    <button type="submit">Submit</button>
+  </form>
+
+  <!-- ✅ CORRECT: Works in all environments -->
+  <div>
+    <button type="button" @click="handleSubmit()">Submit</button>
+  </div>
+  ```
+- Note: This only affects public release, not development mode or workshop preview
+
 **Performance Optimization:**
 - Debounce user input to reduce API calls
 - Implement two-tier caching for content-heavy apps

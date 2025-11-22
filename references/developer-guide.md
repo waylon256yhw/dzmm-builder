@@ -2034,6 +2034,587 @@ for (let i = 1; i < options.messages.length; i++) {
 
 ---
 
+### Q12: 对接 DZMM 后端时需要创建/修改哪些文件？有哪些可复用的代码？
+
+**A**: 遵循分层架构，创建 5 个核心文件，每个文件都有可复用的模板代码。
+
+#### 📂 必需文件清单
+
+```
+src/
+├── services/
+│   └── dzmm.ts          ✅ DZMM API 封装（替换原 backend 调用）
+├── contexts/
+│   └── DzmmContext.tsx  ✅ 全局状态管理（可选，推荐）
+├── lib/
+│   ├── prompts.ts       ✅ 提示词构建逻辑
+│   └── storage.ts       ✅ 安全存储封装（处理 sandbox）
+└── types/
+    └── dzmm.ts          ✅ TypeScript 类型定义
+```
+
+---
+
+#### 1️⃣ **`src/types/dzmm.ts`** - 类型定义（先创建）
+
+```typescript
+// ================== 窗口全局类型扩展 ==================
+declare global {
+  interface Window {
+    dzmm?: {
+      completions: (
+        options: {
+          model: string;
+          messages: { role: 'user' | 'assistant'; content: string }[];
+          maxTokens?: number;
+        },
+        callback: (content: string, done: boolean) => void
+      ) => Promise<void>;
+      kv: {
+        put: (key: string, value: any) => Promise<void>;
+        get: (key: string) => Promise<{ value?: any }>;
+        delete: (key: string) => Promise<void>;
+      };
+    };
+  }
+}
+
+// ================== 基础类型定义 ==================
+export type DzmmModel =
+  | 'nalang-max-0826'
+  | 'nalang-max-0619'
+  | 'nalang-xl-0826'
+  | 'nalang-xl-0430'
+  | 'nalang-turbo-0826'
+  | 'nalang-medium-0826';
+
+export interface DzmmMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export type StreamCallback = (content: string, done: boolean) => void;
+
+// ================== API 参数类型 ==================
+export interface CompletionsOptions {
+  model: DzmmModel;
+  messages: DzmmMessage[];
+  maxTokens?: number; // ⚠️ 范围：200-3000
+}
+
+// ================== 模型配置 ==================
+export interface ModelConfig {
+  id: DzmmModel;
+  name: string;
+  description: string;
+  maxTokens: number;
+}
+
+export const DZMM_MODELS: ModelConfig[] = [
+  { id: 'nalang-max-0826', name: 'Max 0826', description: '最强模型', maxTokens: 3000 },
+  { id: 'nalang-xl-0826', name: 'XL 0826', description: '平衡性能', maxTokens: 3000 },
+  { id: 'nalang-turbo-0826', name: 'Turbo', description: '快速响应', maxTokens: 2000 },
+];
+
+// ================== 业务数据类型（按需添加）==================
+export interface Character {
+  name: string;
+  gender: 'male' | 'female' | 'other';
+  // ... 你的业务字段
+}
+
+export interface SaveData {
+  character: Character;
+  messages: DzmmMessage[];
+  timestamp: string;
+  // ... 其他存档字段
+}
+```
+
+**用途**：所有其他文件的类型基础，先创建这个文件。
+
+---
+
+#### 2️⃣ **`src/services/dzmm.ts`** - API 封装（核心）
+
+```typescript
+import type { CompletionsOptions, StreamCallback, SaveData } from '@/types/dzmm';
+
+// ================== 初始化检测 ==================
+export async function initDzmm(): Promise<boolean> {
+  // 方式1：直接检测
+  if (window.dzmm && typeof window.dzmm.completions === 'function') {
+    console.log('[DZMM] API 已就绪（直接检测）');
+    return true;
+  }
+
+  console.log('[DZMM] 等待 API 就绪...');
+
+  // 方式2：事件监听 + 超时重检
+  const ready = await Promise.race([
+    // 监听 dzmm:ready 事件
+    new Promise<boolean>((resolve) => {
+      const handler = (event: MessageEvent) => {
+        if (event.data?.type === 'dzmm:ready') {
+          console.log('[DZMM] API 就绪（事件触发）');
+          window.removeEventListener('message', handler);
+          resolve(true);
+        }
+      };
+      window.addEventListener('message', handler);
+    }),
+    // 10 秒后再次检测
+    new Promise<boolean>((resolve) => {
+      setTimeout(() => {
+        const available = window.dzmm && typeof window.dzmm.completions === 'function';
+        console.log(`[DZMM] 超时重检：${available ? '可用' : '不可用'}`);
+        resolve(available);
+      }, 10000);
+    }),
+  ]);
+
+  return ready;
+}
+
+export function isDzmmReady(): boolean {
+  return window.dzmm !== undefined && typeof window.dzmm.completions === 'function';
+}
+
+// ================== Completions API ==================
+export async function completions(
+  options: CompletionsOptions,
+  callback: StreamCallback
+): Promise<void> {
+  if (!isDzmmReady() || !window.dzmm) {
+    throw new Error('DZMM API 不可用');
+  }
+
+  // ✅ 参数校验
+  if (options.maxTokens && (options.maxTokens < 200 || options.maxTokens > 3000)) {
+    console.warn(`[DZMM] maxTokens ${options.maxTokens} 超出范围，自动调整为 3000`);
+    options.maxTokens = 3000;
+  }
+
+  // ✅ 调试日志（可选，生产环境可删除）
+  console.log('[DZMM] 发送请求:', {
+    model: options.model,
+    maxTokens: options.maxTokens,
+    messagesCount: options.messages.length,
+  });
+
+  // 检测连续相同角色
+  for (let i = 1; i < options.messages.length; i++) {
+    if (options.messages[i].role === options.messages[i - 1].role) {
+      console.error(`[DZMM] ❌ 错误：连续的 ${options.messages[i].role} 消息！`, {
+        index1: i - 1,
+        index2: i,
+        messages: options.messages.map((m, idx) => ({ idx, role: m.role })),
+      });
+      throw new Error(`消息数组格式错误：索引 ${i-1} 和 ${i} 都是 ${options.messages[i].role}`);
+    }
+  }
+
+  try {
+    await window.dzmm.completions(options, callback);
+  } catch (error) {
+    console.error('[DZMM] Completions 调用失败:', error);
+    throw error;
+  }
+}
+
+// ================== KV Storage ==================
+export async function saveToCloud<T = any>(key: string, data: T): Promise<void> {
+  if (!isDzmmReady() || !window.dzmm) {
+    throw new Error('DZMM KV 不可用');
+  }
+  await window.dzmm.kv.put(key, data);
+  console.log(`[DZMM] KV 保存成功: ${key}`);
+}
+
+export async function loadFromCloud<T = any>(key: string): Promise<T | null> {
+  if (!isDzmmReady() || !window.dzmm) {
+    throw new Error('DZMM KV 不可用');
+  }
+  const result = await window.dzmm.kv.get(key);
+  if (result.value !== undefined) {
+    console.log(`[DZMM] KV 读取成功: ${key}`);
+    return result.value as T;
+  }
+  console.log(`[DZMM] KV 无数据: ${key}`);
+  return null;
+}
+
+export async function deleteFromCloud(key: string): Promise<void> {
+  if (!isDzmmReady() || !window.dzmm) {
+    throw new Error('DZMM KV 不可用');
+  }
+  await window.dzmm.kv.delete(key);
+  console.log(`[DZMM] KV 删除成功: ${key}`);
+}
+
+// ================== 业务层封装示例 ==================
+// 根据你的业务需求添加更多函数
+export async function getAllSaves(): Promise<{ slotId: number; data: SaveData }[]> {
+  const saves: { slotId: number; data: SaveData }[] = [];
+
+  // 假设最多 5 个存档位
+  for (let i = 1; i <= 5; i++) {
+    try {
+      const data = await loadFromCloud<SaveData>(`save_slot_${i}`);
+      if (data) {
+        saves.push({ slotId: i, data });
+      }
+    } catch {
+      // 忽略单个存档读取失败
+    }
+  }
+
+  return saves;
+}
+```
+
+**用途**：替换原有的 `fetch('/api/...')` 后端调用，所有页面组件通过此文件与 DZMM 交互。
+
+---
+
+#### 3️⃣ **`src/lib/storage.ts`** - 安全存储（处理 sandbox）
+
+```typescript
+// ================== 内存降级存储 ==================
+const memoryStorage: Record<string, string> = {};
+let localStorageAvailable: boolean | null = null;
+
+function isLocalStorageAvailable(): boolean {
+  if (localStorageAvailable !== null) return localStorageAvailable;
+
+  try {
+    const testKey = '__storage_test__';
+    window.localStorage.setItem(testKey, testKey);
+    window.localStorage.removeItem(testKey);
+    localStorageAvailable = true;
+    return true;
+  } catch {
+    console.warn('[Storage] localStorage 不可用，使用内存存储');
+    localStorageAvailable = false;
+    return false;
+  }
+}
+
+// ================== 统一接口 ==================
+export function setItem(key: string, value: string): void {
+  if (isLocalStorageAvailable()) {
+    localStorage.setItem(key, value);
+  } else {
+    memoryStorage[key] = value;
+  }
+}
+
+export function getItem(key: string): string | null {
+  if (isLocalStorageAvailable()) {
+    return localStorage.getItem(key);
+  }
+  return memoryStorage[key] || null;
+}
+
+export function removeItem(key: string): void {
+  if (isLocalStorageAvailable()) {
+    localStorage.removeItem(key);
+  } else {
+    delete memoryStorage[key];
+  }
+}
+
+export function clear(): void {
+  if (isLocalStorageAvailable()) {
+    localStorage.clear();
+  } else {
+    Object.keys(memoryStorage).forEach(key => delete memoryStorage[key]);
+  }
+}
+```
+
+**用途**：替换所有 `localStorage.setItem()` 调用，自动处理 DZMM sandbox 限制。
+
+---
+
+#### 4️⃣ **`src/lib/prompts.ts`** - 提示词构建
+
+```typescript
+import type { Character, DzmmMessage } from '@/types/dzmm';
+
+// ================== 提示词模板 ==================
+export function buildSystemPrompt(character: Character): string {
+  return `你是一个智能助手。
+当前用户信息：
+- 姓名：${character.name}
+- 性别：${character.gender}
+
+请根据用户输入提供回复。`;
+}
+
+export function getEmphasis(): string {
+  return `<回复规范>
+1. 使用简体中文
+2. 保持友好专业的语气
+3. 回复长度：200-500字
+</回复规范>`;
+}
+
+// ================== 清理历史消息 ==================
+export function cleanMessageContent(content: string): string {
+  // 移除特殊标签（如 <options>...</options>）
+  return content.replace(/<options>[\s\S]*?<\/options>/g, '').trim();
+}
+
+// ================== 构建消息数组 ==================
+export function buildMessages(
+  character: Character,
+  messages: DzmmMessage[],
+  maxMessages: number = 30
+): DzmmMessage[] {
+  // 1. 获取系统提示词
+  const systemPrompt = buildSystemPrompt(character);
+
+  // 2. 截取最近消息
+  const recentMessages = messages.slice(-maxMessages);
+
+  // 3. 清理历史消息内容
+  const cleanedMessages = recentMessages.map((msg) => ({
+    role: msg.role,
+    content: cleanMessageContent(msg.content),
+  }));
+
+  // 4. 合并 emphasis 到最后一条 user 消息（避免连续 user）
+  const emphasis = getEmphasis();
+  for (let i = cleanedMessages.length - 1; i >= 0; i--) {
+    if (cleanedMessages[i].role === 'user') {
+      cleanedMessages[i].content = `<last_input>\n${cleanedMessages[i].content}\n</last_input>\n\n${emphasis}`;
+      break;
+    }
+  }
+
+  // 5. 返回完整消息数组
+  return [
+    { role: 'user', content: systemPrompt }, // 第一条必须是 user
+    ...cleanedMessages,
+  ];
+}
+```
+
+**用途**：构建发送给 DZMM API 的 messages 数组，处理提示词逻辑。
+
+---
+
+#### 5️⃣ **`src/contexts/DzmmContext.tsx`** - 全局状态（可选但推荐）
+
+```typescript
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { DzmmModel, DzmmMessage, Character, StreamCallback } from '@/types/dzmm';
+import { DZMM_MODELS } from '@/types/dzmm';
+import { initDzmm, isDzmmReady, completions, saveToCloud, loadFromCloud } from '@/services/dzmm';
+import { buildMessages } from '@/lib/prompts';
+
+// ================== Context 类型 ==================
+interface DzmmContextType {
+  dzmmReady: boolean;
+  selectedModel: DzmmModel;
+  isLoading: boolean;
+  streamingContent: string;
+
+  setSelectedModel: (model: DzmmModel) => void;
+  models: typeof DZMM_MODELS;
+
+  sendMessage: (
+    userInput: string,
+    messages: DzmmMessage[],
+    character: Character,
+    onStream?: StreamCallback
+  ) => Promise<string>;
+}
+
+const DzmmContext = createContext<DzmmContextType | null>(null);
+
+// ================== Provider 组件 ==================
+export const DzmmProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [dzmmReady, setDzmmReady] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<DzmmModel>('nalang-max-0826');
+  const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState('');
+
+  // 初始化
+  useEffect(() => {
+    const init = async () => {
+      const ready = await initDzmm();
+      setDzmmReady(ready);
+    };
+    init();
+  }, []);
+
+  // 发送消息
+  const sendMessage = useCallback(
+    async (
+      userInput: string,
+      messages: DzmmMessage[],
+      character: Character,
+      onStream?: StreamCallback
+    ): Promise<string> => {
+      if (!isDzmmReady()) throw new Error('DZMM API 不可用');
+
+      setIsLoading(true);
+      setStreamingContent('');
+
+      try {
+        const updatedMessages: DzmmMessage[] = [...messages, { role: 'user', content: userInput }];
+        const apiMessages = buildMessages(character, updatedMessages);
+
+        const modelConfig = DZMM_MODELS.find((m) => m.id === selectedModel);
+        const maxTokens = modelConfig?.maxTokens || 3000;
+
+        let aiResponse = '';
+
+        await completions(
+          { model: selectedModel, messages: apiMessages, maxTokens },
+          (content, done) => {
+            aiResponse = content;
+            setStreamingContent(content);
+            onStream?.(content, done);
+            if (done) {
+              setIsLoading(false);
+              setStreamingContent('');
+            }
+          }
+        );
+
+        return aiResponse;
+      } catch (error) {
+        setIsLoading(false);
+        setStreamingContent('');
+        console.error('[DZMM] 发送消息失败:', error);
+        throw error;
+      }
+    },
+    [selectedModel]
+  );
+
+  const value: DzmmContextType = {
+    dzmmReady,
+    selectedModel,
+    isLoading,
+    streamingContent,
+    setSelectedModel,
+    models: DZMM_MODELS,
+    sendMessage,
+  };
+
+  return <DzmmContext.Provider value={value}>{children}</DzmmContext.Provider>;
+};
+
+// ================== Custom Hook ==================
+export const useDzmm = () => {
+  const context = useContext(DzmmContext);
+  if (!context) throw new Error('useDzmm must be used within DzmmProvider');
+  return context;
+};
+```
+
+**用途**：全局管理 DZMM 状态，所有页面组件通过 `useDzmm()` hook 访问。
+
+---
+
+#### 📋 使用流程
+
+**步骤 1**：在 `src/main.tsx` 或 `App.tsx` 包裹 Provider
+
+```tsx
+import { DzmmProvider } from '@/contexts/DzmmContext';
+
+function App() {
+  return (
+    <DzmmProvider>
+      {/* 你的路由和页面 */}
+    </DzmmProvider>
+  );
+}
+```
+
+**步骤 2**：在页面组件中使用
+
+```tsx
+import { useDzmm } from '@/contexts/DzmmContext';
+import { useState } from 'react';
+
+function ChatPage() {
+  const { dzmmReady, sendMessage, isLoading } = useDzmm();
+  const [messages, setMessages] = useState<DzmmMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [character] = useState<Character>({ name: 'User', gender: 'male' });
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userInput = input.trim();
+    setInput('');
+
+    // 添加用户消息
+    setMessages(prev => [...prev, { role: 'user', content: userInput }]);
+
+    try {
+      const aiResponse = await sendMessage(userInput, messages, character, (content, done) => {
+        // 流式更新（可选）
+        if (done) {
+          setMessages(prev => [...prev, { role: 'assistant', content }]);
+        }
+      });
+    } catch (error) {
+      console.error('发送失败:', error);
+    }
+  };
+
+  if (!dzmmReady) {
+    return <div>等待 DZMM API 初始化...</div>;
+  }
+
+  return (
+    <div>
+      {messages.map((msg, i) => (
+        <div key={i}>{msg.role}: {msg.content}</div>
+      ))}
+      <input value={input} onChange={e => setInput(e.target.value)} />
+      <button onClick={handleSend} disabled={isLoading}>发送</button>
+    </div>
+  );
+}
+```
+
+---
+
+#### 🔄 迁移对照表
+
+| 原后端调用 | DZMM 替换方案 | 文件位置 |
+|-----------|--------------|---------|
+| `fetch('/api/chat')` | `completions()` | `src/services/dzmm.ts` |
+| `localStorage.setItem()` | `setItem()` | `src/lib/storage.ts` |
+| 后端存档 API | `saveToCloud()` / `loadFromCloud()` | `src/services/dzmm.ts` |
+| 提示词拼接逻辑 | `buildMessages()` | `src/lib/prompts.ts` |
+| 全局状态管理 | `useDzmm()` hook | `src/contexts/DzmmContext.tsx` |
+
+---
+
+#### ✅ 检查清单
+
+创建文件后，验证：
+- [ ] `src/types/dzmm.ts` - 类型定义完整
+- [ ] `src/services/dzmm.ts` - API 封装可用
+- [ ] `src/lib/storage.ts` - localStorage 降级处理
+- [ ] `src/lib/prompts.ts` - 提示词构建正确
+- [ ] `src/contexts/DzmmContext.tsx` - Provider 正常工作
+- [ ] `src/main.tsx` - 已包裹 `<DzmmProvider>`
+- [ ] 页面组件 - 使用 `useDzmm()` 成功调用 API
+- [ ] 构建测试 - `npm run build:single` 无报错
+- [ ] DZMM 平台测试 - 上传后 API 正常工作
+
+---
+
 ## 📚 附录：完整模板
 
 ### 最小可运行模板

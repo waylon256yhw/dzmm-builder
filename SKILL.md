@@ -526,7 +526,7 @@ Seven complete, working DZMM applications:
    - XML parsing for content structure
    - Best for: Forums, content communities, social platforms
 
-7. **yoshiwara-chronicles-dzmm.html** (84KB) - Complete Visual Novel System ⭐
+7. **yoshiwara-chronicles-dzmm.html** (84KB) - Complete Visual Novel System (Alpine.js) ⭐
    - **Multi-opening system** with dynamic scene switching (Night Chapter, Day Chapter)
    - **Rich text rendering** with placeholder technique (handles nested options, dialogue quotes, italics)
    - **Message management** (reroll/regenerate, edit, delete with context preservation)
@@ -539,6 +539,21 @@ Seven complete, working DZMM applications:
    - Complete implementation of all visual novel patterns documented in this skill
    - Best for: Visual novels, interactive fiction, narrative-driven games, Galgames
    - **Reference project**: Based on 54-commit development of yoshiwara-chronicles
+
+8. **yoshiwara-chronicles-react** (893KB, gzip: 473KB) - React Multi-Component Version 🚀
+   - **Same project as #7**, but built with **React + TypeScript + Vite**
+   - **Component-based architecture**: 30+ modular TypeScript/TSX files
+   - **Professional codebase structure**: services/lib/contexts/types layered design
+   - **Complete DZMM API encapsulation** with TypeScript type safety
+   - **Sandbox compatibility layer**: localStorage fallback, form submission handling
+   - **Automatic API parameter validation**: maxTokens range checking, consecutive role detection
+   - **Production-ready error handling**: Detailed logging, validation, graceful degradation
+   - **Modern build pipeline**: Vite + vite-plugin-singlefile (hot reload → single HTML)
+   - **All features from Alpine.js version** plus improved maintainability
+   - Best for: Large projects (>5000 lines), team collaboration, TypeScript projects
+   - **Full source code**: https://github.com/waylon256yhw/yoshiwara-chronicles/tree/dzmm-version
+   - **Documentation**: `assets/react-examples/yoshiwara-chronicles-react.md`
+   - **Key learning**: Q11 (React/Vue migration guide), Q12 (backend integration templates)
 
 Use these as starting templates or reference implementations for specific features.
 
